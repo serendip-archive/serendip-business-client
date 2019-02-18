@@ -3,16 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Request = require("request");
 class HttpClientService {
     async start() { }
-    request(url, opts) {
+    request(opts, returns) {
         return new Promise((resolve, reject) => {
-            Request(url, opts, (err, res, body) => {
+            Request(opts, (err, res, body) => {
                 if (err)
                     return reject(err);
-                else
-                    resolve(res);
+                if (returns == "response")
+                    return resolve(res);
+                return resolve(body);
             });
         });
     }
 }
-HttpClientService.dependencies = [];
 exports.HttpClientService = HttpClientService;

@@ -1,36 +1,208 @@
-import { ServerServiceInterface, Server } from "serendip";
-import { EventEmitter } from "events";
+import { TokenModel, ServerServiceInterface } from "serendip";
 import { HttpClientService } from "./HttpClientService";
+import { LocalStorageService } from "./LocalStorageService";
 import * as _ from "underscore";
-export interface AuthServiceOptionsInterface {}
+import { DataService } from "./DataService";
 
+export interface AuthServiceOptions {
+  username: string;
+  password: string;
+}
 export class AuthService implements ServerServiceInterface {
-  httpClientService: HttpClientService;
-  static configure(options: AuthServiceOptionsInterface): void {
-    AuthService.options = _.extend(AuthService.options, options);
+  static options: AuthServiceOptions = {
+    username: "",
+    password: ""
+  };
+
+  static configure(options: AuthServiceOptions) {
+    AuthService.options = options;
   }
 
-  static options: AuthServiceOptionsInterface = {};
+  async start() {
+    const token = await this.login({
+      username: AuthService.options.username,
+      password: AuthService.options.password
+    });
 
-  static dependencies = ["HttpClientService"];
+    console.log("> AuthService got token", token);
+  }
+  profileValid = false;
+  loggedIn = false;
 
-  static events = new EventEmitter();
-
-  constructor() {
-    this.httpClientService = Server.services["HttpClientService"];
+  get apiUrl() {
+    return DataService.server;
   }
 
-  // Login using clientId, clientSecret provided from https://serendip.cloud
-  async login(clientId: string, clientSecret: string) {
-    var token = await this.httpClientService.request({
-      url: "/api/auth/token",
-      method: "POST",
+  profile: any = {};
+
+  constructor(
+    private httpClientService: HttpClientService,
+    private localStorageService: LocalStorageService
+  ) {}
+  async logout() {
+    this.localStorageService.clear();
+    // await IdbDeleteAllDatabases();
+    window.location.reload();
+  }
+  async token(): Promise<TokenModel> {
+    let token: TokenModel;
+    if (this.localStorageService.getItem("token")) {
+      token = JSON.parse(this.localStorageService.getItem("token"));
+    }
+
+    if (token) {
+      if (token.expires_at - Date.now() < 60000) {
+        token = await this.refreshToken(token);
+      }
+    }
+
+    if (!token) {
+      this.localStorageService.removeItem("token");
+    }
+
+    // console.log('token()',token);
+
+    if (token && token.access_token) {
+      this.loggedIn = true;
+      return token;
+    } else {
+      this.loggedIn = false;
+      throw new Error("cant get token");
+    }
+  }
+
+  async register(mobile: string, password: string): Promise<any> {
+    return this.httpClientService.request({
+      method: "post",
+      url: this.apiUrl + "/api/auth/register",
       json: {
-        clientId,
-        clientSecret
+        username: mobile,
+        mobile: mobile,
+        password: password
       }
     });
   }
 
-  async start() {}
+  async sendVerify(mobile: string): Promise<any> {
+    return this.httpClientService.request({
+      method: "post",
+      url: this.apiUrl + "/api/auth/sendVerifySms",
+      json: {
+        mobile: mobile
+      }
+    });
+  }
+
+  async sendOneTimePassword(mobile: string, timeout?: number): Promise<any> {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        reject({ status: 0 });
+      }, timeout || 3000);
+
+      return this.httpClientService
+        .request({
+          method: "post",
+          url: this.apiUrl + "/api/auth/oneTimePassword",
+          json: {
+            mobile: mobile
+          }
+        })
+
+        .then(res => {
+          resolve(res);
+        })
+        .catch(err => {
+          reject(err);
+        });
+    });
+  }
+
+  async sendResetPasswordToken(mobile: string): Promise<any> {
+    return this.httpClientService.request({
+      url: this.apiUrl + "/api/auth/sendResetPasswordToken",
+      json: {
+        mobile: mobile
+      }
+    });
+  }
+
+  async verifyMobile(mobile: string, code: string): Promise<any> {
+    return this.httpClientService.request({
+      method: "post",
+      url: this.apiUrl + "/api/auth/verifyMobile",
+      json: {
+        mobile: mobile,
+        code: code
+      }
+    });
+  }
+
+  async resetPassword(
+    mobile: string,
+    code: string,
+    password: string,
+    passwordConfirm: string
+  ): Promise<any> {
+    return this.httpClientService.request({
+      url: this.apiUrl + "/api/auth/resetPassword",
+      json: {
+        mobile: mobile,
+        code: code,
+        password: password,
+        passwordConfirm: passwordConfirm
+      }
+    });
+  }
+
+  async login(opts: {
+    username?: string;
+    mobile?: string;
+    password?: string;
+    oneTimePassword?: string;
+  }): Promise<TokenModel> {
+    const newToken = await this.httpClientService.request({
+      url: this.apiUrl + "/api/auth/token",
+      method: "post",
+      json: _.extend(
+        {
+          grant_type: "password"
+        },
+        opts
+      )
+    });
+
+    if (!newToken) {
+      throw new Error("empty token");
+    }
+
+    // console.log("newToken", newToken);
+
+    this.loggedIn = true;
+
+    this.localStorageService.setItem("token", JSON.stringify(newToken));
+
+    return newToken;
+  }
+
+  async refreshToken(token: TokenModel): Promise<TokenModel> {
+    try {
+      const newToken = await this.httpClientService.request({
+        method: "post",
+        url: this.apiUrl + "/api/auth/refreshToken",
+        json: {
+          refresh_token: token.refresh_token,
+          access_token: token.access_token
+        }
+      });
+
+      this.localStorageService.setItem("token", JSON.stringify(newToken));
+      return newToken;
+    } catch (res) {
+      if (res.status === 401 || res.status === 400) {
+        this.logout();
+      } else {
+        return token;
+      }
+    }
+  }
 }
