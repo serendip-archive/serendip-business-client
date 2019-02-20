@@ -1,7 +1,15 @@
 import { DataService } from "./DataService";
 import { AuthService } from "./AuthService";
-import * as ws from "ws";
+
+export interface WsServiceOptions {
+  webSocketClass: any;
+}
 export class WsService {
+  static options: WsServiceOptions;
+
+  static configure(opts: WsServiceOptions) {
+    WsService.options = opts;
+  }
   constructor(
     private authService: AuthService,
     private dataService: DataService
@@ -66,7 +74,6 @@ export class WsService {
   }
 
   private initiateSocket(path?: string): Promise<WebSocket> {
-    console.log("request for websocket to", path);
     return new Promise(async (resolve, reject) => {
       let wsConnection;
 
@@ -78,9 +85,7 @@ export class WsService {
               .replace("https:", "wss:") + (path || "");
 
       try {
-        if (typeof WebSocket != "undefined")
-          wsConnection = new WebSocket(wsAddress);
-        else wsConnection = new ws(wsAddress);
+        wsConnection = new WsService.options.webSocketClass(wsAddress);
       } catch (error) {
         reject(error);
       }

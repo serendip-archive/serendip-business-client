@@ -24,7 +24,7 @@ var serverLog = fs.createWriteStream(
 var run = function() {
   if (server) if (server.kill) server.kill();
 
-  server = child.spawn("node", ["dist/run.js"], {
+  server = child.spawn("node", ["dist/debug.js"], {
     stdio: "inherit"
   });
 
@@ -72,7 +72,7 @@ gulp.task("ts", function() {
     .pipe(
       ts({
         noImplicitAny: false,
-        target: "es2017",
+        target: "ES2015",
         sourceMap: true,
         module: "CommonJS",
         baseUrl: ".",

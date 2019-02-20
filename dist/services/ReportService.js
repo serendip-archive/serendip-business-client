@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const _ = require("underscore");
 const bson_objectid_1 = require("bson-objectid");
@@ -6,47 +14,49 @@ class ReportService {
     constructor(dataService) {
         this.dataService = dataService;
     }
-    async generate(report) {
-        if (!report.fields) {
-            report.fields = [];
-        }
-        if (!report.data) {
-            await this.dataService.pullCollection(report.entityName);
-            let data = await this.dataService.list(report.entityName, 0, 0, true);
-            if (!data) {
-                data = [];
+    generate(report) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!report.fields) {
+                report.fields = [];
             }
-            data = await Promise.all(data.map((document, index) => {
-                return this.formatDocument(document, report.fields);
-            }));
-            const queriedData = [];
-            await Promise.all(data.map((document, index) => {
-                return new Promise(async (resolve, reject) => {
-                    const isMatch = await this.documentMatchFieldQueries(document, report.fields);
-                    if (isMatch) {
-                        queriedData.push(document);
-                    }
-                    resolve();
-                });
-            }));
-            report.data = queriedData;
-            report.count = report.data.length;
-            // report.formats = [
-            //   {
-            //     method: "javascript",
-            //     options: {
-            //       code: groupMethod.toString()
-            //     }
-            //   }
-            //   // {
-            //   //   method : 'groupByQueries',
-            //   //   options : {
-            //   //     queries : [{method : 'eq',}] as FieldQueryInterface[]
-            //   //   }
-            //   // }
-            // ];
-        }
-        return report;
+            if (!report.data) {
+                yield this.dataService.pullCollection(report.entityName);
+                let data = yield this.dataService.list(report.entityName, 0, 0, true);
+                if (!data) {
+                    data = [];
+                }
+                data = yield Promise.all(data.map((document, index) => {
+                    return this.formatDocument(document, report.fields);
+                }));
+                const queriedData = [];
+                yield Promise.all(data.map((document, index) => {
+                    return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                        const isMatch = yield this.documentMatchFieldQueries(document, report.fields);
+                        if (isMatch) {
+                            queriedData.push(document);
+                        }
+                        resolve();
+                    }));
+                }));
+                report.data = queriedData;
+                report.count = report.data.length;
+                // report.formats = [
+                //   {
+                //     method: "javascript",
+                //     options: {
+                //       code: groupMethod.toString()
+                //     }
+                //   }
+                //   // {
+                //   //   method : 'groupByQueries',
+                //   //   options : {
+                //   //     queries : [{method : 'eq',}] as FieldQueryInterface[]
+                //   //   }
+                //   // }
+                // ];
+            }
+            return report;
+        });
     }
     queueFormatReport() {
         return new Promise((resolve, reject) => {
@@ -60,107 +70,115 @@ class ReportService {
             }, timeout);
         });
     }
-    async formatReport(report, format) {
-        if (!this.formatterBusy) {
-            this.formatterBusy = true;
-            // report = await this.generate(_.omit(report, "data"));
-            // TODO: if for offline reports
-            report = await this.getAsyncReportFormatMethods()[format.method]({
-                report: _.clone(report),
-                format
-            });
-            this.formatterBusy = false;
-            return report;
-        }
-        else {
-            await this.wait(1000);
-            return this.formatReport(report, format);
-        }
-    }
-    async formatDocument(document, fields) {
-        // iterate throw fields in document
-        const fieldsToFormat = await Promise.all(fields
-            .filter(field => {
-            return (field.enabled && this.getAsyncFieldFormatMethods()[field.method]);
-        })
-            // map each field to get value from
-            .map(field => {
-            return new Promise(async (resolve, reject) => {
-                let value = null;
-                // check if field method exists
-                value = await this.getAsyncFieldFormatMethods()[field.method]({
-                    document,
-                    field
+    formatReport(report, format) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.formatterBusy) {
+                this.formatterBusy = true;
+                // report = await this.generate(_.omit(report, "data"));
+                // TODO: if for offline reports
+                report = yield this.getAsyncReportFormatMethods()[format.method]({
+                    report: _.clone(report),
+                    format
                 });
-                const fieldToSet = {};
-                fieldToSet[field.name] = value;
-                resolve(fieldToSet);
-            });
-        }));
-        return _.extend(document, ...fieldsToFormat);
-    }
-    async documentMatchFieldQuery(record, fields, field, query) {
-        if (!query.enabled) {
-            return true;
-        }
-        if (!query.methodInput) {
-            query.methodInput = {};
-        }
-        if (this.getSyncFieldQueryMethods()[query.method]) {
-            if (!query.methodInput.value) {
-                query.methodInput.value = "";
+                this.formatterBusy = false;
+                return report;
             }
-            return this.getSyncFieldQueryMethods()[query.method](record[field.name], query.methodInput.value);
-        }
-        if (this.getAsyncFieldQueryMethods[query.method]) {
-            return await this.getAsyncFieldQueryMethods()[query.method]({
-                document: record,
-                field,
-                query
-            });
-        }
-        else {
-            return false;
-        }
+            else {
+                yield this.wait(1000);
+                return this.formatReport(report, format);
+            }
+        });
+    }
+    formatDocument(document, fields) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // iterate throw fields in document
+            const fieldsToFormat = yield Promise.all(fields
+                .filter(field => {
+                return (field.enabled && this.getAsyncFieldFormatMethods()[field.method]);
+            })
+                // map each field to get value from
+                .map(field => {
+                return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                    let value = null;
+                    // check if field method exists
+                    value = yield this.getAsyncFieldFormatMethods()[field.method]({
+                        document,
+                        field
+                    });
+                    const fieldToSet = {};
+                    fieldToSet[field.name] = value;
+                    resolve(fieldToSet);
+                }));
+            }));
+            return _.extend(document, ...fieldsToFormat);
+        });
+    }
+    documentMatchFieldQuery(record, fields, field, query) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!query.enabled) {
+                return true;
+            }
+            if (!query.methodInput) {
+                query.methodInput = {};
+            }
+            if (this.getSyncFieldQueryMethods()[query.method]) {
+                if (!query.methodInput.value) {
+                    query.methodInput.value = "";
+                }
+                return this.getSyncFieldQueryMethods()[query.method](record[field.name], query.methodInput.value);
+            }
+            if (this.getAsyncFieldQueryMethods[query.method]) {
+                return yield this.getAsyncFieldQueryMethods()[query.method]({
+                    document: record,
+                    field,
+                    query
+                });
+            }
+            else {
+                return false;
+            }
+        });
     }
     /**
      *
      * @param record Document record to check
      * @param fields Fields to check their queries
      */
-    async documentMatchFieldQueries(record, fields) {
-        const results = await Promise.all(fields.map(async (field) => {
-            if (!field.enabled) {
-                return true;
-            }
-            if (!field.queries) {
-                return true;
-            }
-            return Promise.all(field.queries.map(query => this.documentMatchFieldQuery(record, fields, field, query)));
-        }));
-        return (_.flatten(results).filter(r => {
-            return r === false;
-        }).length === 0);
+    documentMatchFieldQueries(record, fields) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const results = yield Promise.all(fields.map((field) => __awaiter(this, void 0, void 0, function* () {
+                if (!field.enabled) {
+                    return true;
+                }
+                if (!field.queries) {
+                    return true;
+                }
+                return Promise.all(field.queries.map(query => this.documentMatchFieldQuery(record, fields, field, query)));
+            })));
+            return (_.flatten(results).filter(r => {
+                return r === false;
+            }).length === 0);
+        });
     }
     getAsyncReportFormatMethods() {
         return {
-            javascript: async (input) => {
+            javascript: (input) => __awaiter(this, void 0, void 0, function* () {
                 const formatOptions = input.format.options;
                 // tslint:disable-next-line:no-eval
                 const methodContainer = eval(formatOptions.code);
                 const method = methodContainer({ _ });
                 //    try {
-                return await method(input.report);
+                return yield method(input.report);
                 // } catch (error) {
                 //   return input.report;
                 // }
-            },
-            groupByQueries: async (input) => {
+            }),
+            groupByQueries: (input) => __awaiter(this, void 0, void 0, function* () {
                 const formatOptions = {
                     queries: input.format.options.queries
                 };
                 return input.report;
-            }
+            })
         };
     }
     /**
@@ -168,11 +186,11 @@ class ReportService {
      */
     getAsyncFieldFormatMethods() {
         return {
-            joinFields: async (input) => {
+            joinFields: (input) => __awaiter(this, void 0, void 0, function* () {
                 const methodOptions = input.field.methodOptions;
                 return _.map(methodOptions.fields, f => input.document[f]).join(methodOptions.separator);
-            },
-            javascript: async (input) => {
+            }),
+            javascript: (input) => __awaiter(this, void 0, void 0, function* () {
                 const methodOptions = { code: input.field.methodOptions.code };
                 let evaluatedCode;
                 try {
@@ -185,14 +203,14 @@ class ReportService {
                 catch (error) {
                     return error.message || error;
                 }
-            }
+            })
         };
     }
     getAsyncFieldQueryMethods() {
         return {
-            javascript: async (opts) => {
+            javascript: (opts) => __awaiter(this, void 0, void 0, function* () {
                 return true;
-            }
+            })
         };
     }
     getSyncFieldQueryMethods() {

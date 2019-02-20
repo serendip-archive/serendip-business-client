@@ -1,44 +1,44 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs = require("fs-extra");
-const serendip_1 = require("serendip");
 class LocalStorageService {
     constructor() {
-        this.path = serendip_1.Server.dir + "/.localStorage.json";
+        this.storage = {};
     }
-    async start() {
-        if (!fs.existsSync(this.path))
-            fs.writeJSONSync(this.path, {});
+    static configure(opts) {
+        LocalStorageService.options = opts;
     }
-    get storage() {
-        if (this._storage)
-            return this._storage;
-        else {
-            if (fs.existsSync(this.path)) {
-                this._storage = fs.readJSONSync(this.path);
-                return this._storage;
-            }
-            else
-                return {};
-        }
-    }
-    set storage(v) {
-        this._storage = v;
+    start() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (LocalStorageService.options.load)
+                this.storage = yield LocalStorageService.options.load();
+        });
     }
     setItem(key, value) {
         this.storage[key] = value;
-        fs.writeJSONSync(this.path, this.storage);
+        if (LocalStorageService.options.set)
+            LocalStorageService.options.set(key, value);
     }
     getItem(key) {
         return this.storage[key];
     }
     removeItem(key) {
         delete this.storage[key];
-        fs.writeJSONSync(this.path, this.storage);
+        if (LocalStorageService.options.remove)
+            LocalStorageService.options.remove(key);
     }
     clear() {
         this.storage = {};
-        fs.writeJSONSync(this.path, {});
+        if (LocalStorageService.options.clear)
+            LocalStorageService.options.clear();
     }
 }
+LocalStorageService.options = {};
 exports.LocalStorageService = LocalStorageService;

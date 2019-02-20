@@ -1,14 +1,15 @@
-import { TokenModel, ServerServiceInterface } from "serendip";
+import { TokenModel } from "serendip-business-model";
 import { HttpClientService } from "./HttpClientService";
 import { LocalStorageService } from "./LocalStorageService";
 import * as _ from "underscore";
 import { DataService } from "./DataService";
+import { ClientServiceInterface } from "../Client";
 
 export interface AuthServiceOptions {
   username: string;
   password: string;
 }
-export class AuthService implements ServerServiceInterface {
+export class AuthService implements ClientServiceInterface {
   static options: AuthServiceOptions = {
     username: "",
     password: ""
@@ -19,12 +20,18 @@ export class AuthService implements ServerServiceInterface {
   }
 
   async start() {
-    const token = await this.login({
-      username: AuthService.options.username,
-      password: AuthService.options.password
-    });
-
-    console.log("> AuthService got token", token);
+    if (!(await this.token())) {
+      const token = await this.login({
+        username: AuthService.options.username,
+        password: AuthService.options.password
+      });
+      console.log("> AuthService got token", token);
+    } else {
+      console.log(
+        "> AuthService using token in localStorage",
+        await this.token()
+      );
+    }
   }
   profileValid = false;
   loggedIn = false;
@@ -42,7 +49,6 @@ export class AuthService implements ServerServiceInterface {
   async logout() {
     this.localStorageService.clear();
     // await IdbDeleteAllDatabases();
-    window.location.reload();
   }
   async token(): Promise<TokenModel> {
     let token: TokenModel;

@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const JsZip = require("jszip");
 const utils = require("serendip-utility");
@@ -23,21 +31,42 @@ class DataService {
         ];
         this.setCurrentServer();
     }
-    async start() { }
-    async businesses() {
-        return await this.request({
-            method: "get",
-            retry: false,
-            path: "/api/business/list"
+    start() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                this.businessService.businesses = yield this.businesses();
+                if (!this.businessService.business)
+                    this.businessService.business = this.businessService.businesses[0];
+                console.log("> DataService loaded businesses: \n", this.businessService.businesses
+                    .map(p => `\t ${p._id} ${p.title}\n`)
+                    .join(""));
+            }
+            catch (error) { }
+            if (this.businessService.business)
+                console.log("> DataService default business _id: " +
+                    this.businessService.business._id);
+            else
+                throw "DataService could not work without default business. provide one via DataService.configure method or connect to the server";
         });
     }
-    async setDefaultBusiness(businessId) {
-        try {
-            this.businessService.business = _.findWhere(await this.businesses(), {
-                _id: businessId
+    businesses() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.request({
+                method: "get",
+                retry: false,
+                path: "/api/business/list"
             });
-        }
-        catch (error) { }
+        });
+    }
+    setDefaultBusiness(businessId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                this.businessService.business = _.findWhere(yield this.businesses(), {
+                    _id: businessId
+                });
+            }
+            catch (error) { }
+        });
     }
     setCurrentServer(srv) {
         let lsServer = this.localStorageService.getItem("server");
@@ -67,26 +96,28 @@ class DataService {
         }
         this.localStorageService.setItem("server", lsServer);
     }
-    async profile() {
-        let profileLs = this.localStorageService.getItem("profile");
-        try {
-            const res = await this.request({ path: "/api/profile", method: "get" });
-            if (res) {
-                profileLs = res;
-                this.localStorageService.setItem("profile", JSON.stringify(profileLs));
+    profile() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let profileLs = this.localStorageService.getItem("profile");
+            try {
+                const res = yield this.request({ path: "/api/profile", method: "get" });
+                if (res) {
+                    profileLs = res;
+                    this.localStorageService.setItem("profile", JSON.stringify(profileLs));
+                }
             }
-        }
-        catch (error) {
-            if (profileLs) {
-                return JSON.parse(profileLs);
+            catch (error) {
+                if (profileLs) {
+                    return JSON.parse(profileLs);
+                }
+                else {
+                    throw error;
+                }
             }
-            else {
-                throw error;
-            }
-        }
+        });
     }
     request(opts) {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             setTimeout(() => {
                 reject("timeout");
             }, opts.timeout || 30000);
@@ -99,7 +130,7 @@ class DataService {
                 opts.host = DataService.server;
             }
             try {
-                const token = await this.authService.token();
+                const token = yield this.authService.token();
                 if (!opts.model._business) {
                     if (this.businessService.business) {
                         opts.model._business = this.businessService.business._id;
@@ -117,7 +148,7 @@ class DataService {
                 //   "HTTP " + opts.method.toUpperCase() + " Request to",
                 //   opts.host + opts.path
                 // );
-                result = await this.httpClientService.request({
+                result = yield this.httpClientService.request({
                     method: opts.method,
                     json: opts.model,
                     encoding: opts.raw ? null : "utf8",
@@ -130,7 +161,7 @@ class DataService {
                 }, opts.raw ? "response" : "body");
             }
             catch (error) {
-                console.warn("request error", opts, error);
+                console.log("request error", opts.path, error.message);
                 if (error.status === 401) {
                     this.authService.logout();
                 }
@@ -147,157 +178,167 @@ class DataService {
             }
             catch (_a) { }
             resolve(result);
+        }));
+    }
+    zip(controller, from, to) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const res = yield this.request({
+                method: "POST",
+                timeout: 60000,
+                path: `/api/entity/${controller}/zip`,
+                model: {
+                    from: from,
+                    to: to
+                },
+                raw: true
+            });
+            const data = res.body;
+            if (!data) {
+                return [];
+            }
+            const zip = yield JsZip.loadAsync(data, {
+                base64: false,
+                checkCRC32: true
+            });
+            const unzippedText = yield zip.file("data.json").async("text");
+            const unzippedArray = JSON.parse(unzippedText);
+            return unzippedArray;
         });
     }
-    async zip(controller, from, to) {
-        const res = await this.request({
-            method: "POST",
-            timeout: 60000,
-            path: `/api/entity/${controller}/zip`,
-            model: {
-                from: from,
-                to: to
-            },
-            raw: true
-        });
-        const data = res.body;
-        if (!data) {
-            return [];
-        }
-        const zip = await JsZip.loadAsync(data, {
-            base64: false,
-            checkCRC32: true
-        });
-        const unzippedText = await zip.file("data.json").async("text");
-        const unzippedArray = JSON.parse(unzippedText);
-        return unzippedArray;
-    }
-    async list(controller, skip, limit, offline) {
-        if (offline) {
-            const collection = await this.dbService.collection(controller);
-            let data = await collection.find();
-            if (skip && limit) {
-                return _.take(_.rest(data, skip), limit);
-            }
-            if (!skip && limit) {
-                return _.take(data, limit);
-            }
-            if (skip && !limit) {
-                return _.rest(data, skip);
-            }
-            return data;
-        }
-        else {
-            try {
-                return await this.request({
-                    method: "POST",
-                    path: `/api/entity/${controller}/list`,
-                    timeout: 1000,
-                    model: {
-                        skip: skip,
-                        limit: limit
-                    }
-                });
-            }
-            catch (error) {
-                if (!offline) {
-                    return await this.list(controller, skip, limit, true);
+    list(controller, skip, limit, offline) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (offline) {
+                const collection = yield this.dbService.collection(controller);
+                let data = yield collection.find();
+                if (skip && limit) {
+                    return _.take(_.rest(data, skip), limit);
                 }
-            }
-        }
-    }
-    async search(controller, query, take, properties, propertiesSearchMode, offline) {
-        if (offline) {
-            const collection = await this.dbService.collection(controller);
-            const data = await collection.find();
-            const result = [];
-            await Promise.all(_.map(data, model => {
-                return new Promise(async (resolve, reject) => {
-                    const modelText = JSON.stringify(model);
-                    if (modelText.indexOf(query) !== -1) {
-                        result.push(model);
-                    }
-                    resolve();
-                });
-            }));
-            return _.take(result, take);
-        }
-        else {
-            try {
-                return await this.request({
-                    method: "POST",
-                    path: `/api/entity/${controller}/search`,
-                    model: {
-                        properties,
-                        propertiesSearchMode,
-                        take: take,
-                        query: query
-                    },
-                    timeout: 3000,
-                    retry: false
-                });
-            }
-            catch (error) {
-                if (!offline) {
-                    return await this.search(controller, query, take, properties, propertiesSearchMode, true);
+                if (!skip && limit) {
+                    return _.take(data, limit);
                 }
-                else {
-                    throw error;
+                if (skip && !limit) {
+                    return _.rest(data, skip);
                 }
-            }
-        }
-    }
-    async count(controller, offline) {
-        if (offline) {
-            const collection = await this.dbService.collection(controller);
-            const data = await collection.find();
-            return data.length;
-        }
-        else {
-            try {
-                return await this.request({
-                    method: "POST",
-                    timeout: 1000,
-                    path: `/api/entity/${controller}/count`
-                });
-            }
-            catch (error) {
-                if (!offline) {
-                    return await this.count(controller, true);
-                }
-            }
-        }
-    }
-    async details(controller, _id, offline, error) {
-        if (offline) {
-            const collection = await this.dbService.collection(controller);
-            const data = await collection.find({ _id });
-            if (data[0]) {
-                return data[0];
+                return data;
             }
             else {
-                throw error;
+                try {
+                    return yield this.request({
+                        method: "POST",
+                        path: `/api/entity/${controller}/list`,
+                        timeout: 1000,
+                        model: {
+                            skip: skip,
+                            limit: limit
+                        }
+                    });
+                }
+                catch (error) {
+                    if (!offline) {
+                        return yield this.list(controller, skip, limit, true);
+                    }
+                }
             }
-        }
-        else {
-            try {
-                const result = await this.request({
-                    method: "POST",
-                    path: `/api/entity/${controller}/details`,
-                    model: { _id }
-                });
-                return result;
+        });
+    }
+    search(controller, query, take, properties, propertiesSearchMode, offline) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (offline) {
+                const collection = yield this.dbService.collection(controller);
+                const data = yield collection.find();
+                const result = [];
+                yield Promise.all(_.map(data, model => {
+                    return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                        const modelText = JSON.stringify(model);
+                        if (modelText.indexOf(query) !== -1) {
+                            result.push(model);
+                        }
+                        resolve();
+                    }));
+                }));
+                return _.take(result, take);
             }
-            catch (error) {
-                console.log("trying details offline");
-                if (!offline) {
-                    return this.details(controller, _id, true, error);
+            else {
+                try {
+                    return yield this.request({
+                        method: "POST",
+                        path: `/api/entity/${controller}/search`,
+                        model: {
+                            properties,
+                            propertiesSearchMode,
+                            take: take,
+                            query: query
+                        },
+                        timeout: 3000,
+                        retry: false
+                    });
+                }
+                catch (error) {
+                    if (!offline) {
+                        return yield this.search(controller, query, take, properties, propertiesSearchMode, true);
+                    }
+                    else {
+                        throw error;
+                    }
+                }
+            }
+        });
+    }
+    count(controller, offline) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (offline) {
+                const collection = yield this.dbService.collection(controller);
+                const data = yield collection.find();
+                return data.length;
+            }
+            else {
+                try {
+                    return yield this.request({
+                        method: "POST",
+                        timeout: 1000,
+                        path: `/api/entity/${controller}/count`
+                    });
+                }
+                catch (error) {
+                    if (!offline) {
+                        return yield this.count(controller, true);
+                    }
+                }
+            }
+        });
+    }
+    details(controller, _id, offline, error) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (offline) {
+                const collection = yield this.dbService.collection(controller);
+                const data = yield collection.find({ _id });
+                if (data[0]) {
+                    return data[0];
                 }
                 else {
                     throw error;
                 }
             }
-        }
+            else {
+                try {
+                    const result = yield this.request({
+                        method: "POST",
+                        path: `/api/entity/${controller}/details`,
+                        model: { _id }
+                    });
+                    return result;
+                }
+                catch (error) {
+                    console.log("trying details offline");
+                    if (!offline) {
+                        return this.details(controller, _id, true, error);
+                    }
+                    else {
+                        throw error;
+                    }
+                }
+            }
+        });
     }
     changes(controller, from, to, _id) {
         const query = {
@@ -327,106 +368,116 @@ class DataService {
             model: query
         });
     }
-    async updateIDB(model, controller) {
-        const collection = await this.dbService.collection(controller);
-        await collection.updateOne({
-            model
+    updateIDB(model, controller) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const collection = yield this.dbService.collection(controller);
+            yield collection.updateOne({
+                model
+            });
         });
     }
-    async insert(controller, model) {
-        if (!model._id) {
-            model._id = new bson_objectid_1.default().str;
-        }
-        const result = await this.request({
-            method: "POST",
-            path: `/api/entity/${controller}/insert`,
-            timeout: 1000,
-            model: model,
-            retry: true
+    insert(controller, model) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!model._id) {
+                model._id = new bson_objectid_1.default().str;
+            }
+            const result = yield this.request({
+                method: "POST",
+                path: `/api/entity/${controller}/insert`,
+                timeout: 1000,
+                model: model,
+                retry: true
+            });
+            yield this.updateIDB(model, controller);
+            this.obService.publish(controller, "insert", model);
+            return result;
         });
-        await this.updateIDB(model, controller);
-        this.obService.publish(controller, "insert", model);
-        return result;
     }
-    async update(controller, model) {
-        if (!model._id) {
-            model._id = new bson_objectid_1.default().str;
-        }
-        await this.updateIDB(model, controller);
-        this.obService.publish(controller, "update", model);
-        await this.request({
-            method: "POST",
-            path: `/api/entity/${controller}/update`,
-            model: model,
-            retry: true
+    update(controller, model) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!model._id) {
+                model._id = new bson_objectid_1.default().str;
+            }
+            yield this.updateIDB(model, controller);
+            this.obService.publish(controller, "update", model);
+            yield this.request({
+                method: "POST",
+                path: `/api/entity/${controller}/update`,
+                model: model,
+                retry: true
+            });
+            return model;
         });
-        return model;
     }
-    async delete(controller, _id) {
-        console.log("delete", controller, _id);
-        let model = { _id: _id };
-        const collection = await this.dbService.collection(controller);
-        collection.deleteOne(_id);
-        this.obService.publish(controller, "delete", model);
-        console.log("model to delete", model);
-        await this.request({
-            method: "POST",
-            path: `/api/entity/${controller}/delete`,
-            model: model,
-            retry: true
+    delete(controller, _id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log("delete", controller, _id);
+            let model = { _id: _id };
+            const collection = yield this.dbService.collection(controller);
+            collection.deleteOne(_id);
+            this.obService.publish(controller, "delete", model);
+            console.log("model to delete", model);
+            yield this.request({
+                method: "POST",
+                path: `/api/entity/${controller}/delete`,
+                model: model,
+                retry: true
+            });
+            return model;
         });
-        return model;
     }
-    async pullCollection(collection) {
-        const dbCollection = await this.dbService.collection(collection);
-        const pullStore = await this.dbService.collection("pull");
-        let lastSync = 0;
-        try {
-            lastSync = (await pullStore.find({ collection }))
-                .map(p => p.date)
-                .sort((a, b) => b - a)[0];
-        }
-        catch (e) {
-            console.log(e);
-        }
-        if (lastSync) {
-            // TODO Delete removed items
-        }
-        let changes;
-        let changesCount;
-        changesCount = await this.countChanges(collection, lastSync, Date.now());
-        if (!changesCount) {
-            return;
-        }
-        changes = await this.changes(collection, lastSync, Date.now());
-        if (changes) {
-            if (changes.deleted.length > 0) {
-                for (const id of changes.deleted) {
-                    try {
-                        await dbCollection.deleteOne(id);
+    pullCollection(collection) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const dbCollection = yield this.dbService.collection(collection);
+            const pullStore = yield this.dbService.collection("pull");
+            let lastSync = 0;
+            try {
+                lastSync = (yield pullStore.find({ collection }))
+                    .map(p => p.date)
+                    .sort((a, b) => b - a)[0];
+            }
+            catch (e) {
+                console.log(e);
+            }
+            if (lastSync) {
+                // TODO Delete removed items
+            }
+            let changes;
+            let changesCount;
+            changesCount = yield this.countChanges(collection, lastSync, Date.now());
+            if (!changesCount) {
+                return;
+            }
+            changes = yield this.changes(collection, lastSync, Date.now());
+            if (changes) {
+                if (changes.deleted.length > 0) {
+                    for (const id of changes.deleted) {
+                        try {
+                            yield dbCollection.deleteOne(id);
+                        }
+                        catch (error) { }
                     }
-                    catch (error) { }
                 }
             }
-        }
-        console.warn("changes count for " +
-            collection +
-            " is " +
-            changesCount +
-            " since " +
-            lastSync, changes);
-        const newData = await this.zip(collection, lastSync, Date.now());
-        for (const item of newData) {
-            await dbCollection.updateOne(item);
-        }
-        await pullStore.insertOne({
-            date: Date.now(),
-            changes,
-            collection
+            console.warn("changes count for " +
+                collection +
+                " is " +
+                changesCount +
+                " since " +
+                lastSync, changes);
+            const newData = yield this.zip(collection, lastSync, Date.now());
+            for (const item of newData) {
+                yield dbCollection.updateOne(item);
+            }
+            yield pullStore.insertOne({
+                date: Date.now(),
+                changes,
+                collection
+            });
         });
     }
     pushCollections() {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             return resolve();
             // const store = await this.idbService.syncIDB("push");
             // const keys = await store.keys();
@@ -461,33 +512,35 @@ class DataService {
             // } else {
             //   resolve();
             // }
-        });
+        }));
     }
-    async pullCollections(onCollectionSync) {
-        const baseCollections = ["dashboard", "entity", "form", "people", "report"];
-        // FormsSchema.forEach(schema => {
-        //   if (schema.entityName) {
-        //     if (collections.indexOf(schema.entityName) === -1) {
-        //       collections.push(schema.entityName);
-        //     }
-        //   }
-        // });
-        // ReportsSchema.forEach(schema => {
-        //   if (schema.entityName) {
-        //     if (collections.indexOf(schema.entityName) === -1) {
-        //       collections.push(schema.entityName);
-        //     }
-        //   }
-        // });
-        for (const collection of baseCollections) {
-            await this.pullCollection(collection);
-        }
-        const entityCollections = (await this.list("entity"))
-            // .filter(p => p.offline)
-            .map(p => p.name);
-        for (const collection of entityCollections) {
-            await this.pullCollection(collection);
-        }
+    pullCollections(onCollectionSync) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const baseCollections = ["dashboard", "entity", "form", "people", "report"];
+            // FormsSchema.forEach(schema => {
+            //   if (schema.entityName) {
+            //     if (collections.indexOf(schema.entityName) === -1) {
+            //       collections.push(schema.entityName);
+            //     }
+            //   }
+            // });
+            // ReportsSchema.forEach(schema => {
+            //   if (schema.entityName) {
+            //     if (collections.indexOf(schema.entityName) === -1) {
+            //       collections.push(schema.entityName);
+            //     }
+            //   }
+            // });
+            for (const collection of baseCollections) {
+                yield this.pullCollection(collection);
+            }
+            const entityCollections = (yield this.list("entity"))
+                // .filter(p => p.offline)
+                .map(p => p.name);
+            for (const collection of entityCollections) {
+                yield this.pullCollection(collection);
+            }
+        });
     }
     // public async indexCollections() {
     //   await promiseSerial(
@@ -525,14 +578,16 @@ class DataService {
     //   });
     //   this.commonEnglishWordsIndexCache = docIndex;
     // }
-    async sync() {
-        await this.pushCollections();
-        await this.pullCollections();
-        // await this.indexCollections();
-        //  await this.indexCommonEnglishWords();
+    sync() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.pushCollections();
+            yield this.pullCollections();
+            // await this.indexCollections();
+            //  await this.indexCommonEnglishWords();
+        });
     }
 }
 // public collectionsTextIndex: DocumentIndex[];
 DataService.dependencies = [];
-DataService.server = "http://localhost:2040";
+DataService.server = "https://business.serendip.cloud";
 exports.DataService = DataService;

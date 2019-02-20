@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const _ = require("underscore");
 const DataService_1 = require("./DataService");
@@ -13,151 +21,177 @@ class AuthService {
     static configure(options) {
         AuthService.options = options;
     }
-    async start() {
-        const token = await this.login({
-            username: AuthService.options.username,
-            password: AuthService.options.password
+    start() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!(yield this.token())) {
+                const token = yield this.login({
+                    username: AuthService.options.username,
+                    password: AuthService.options.password
+                });
+                console.log("> AuthService got token", token);
+            }
+            else {
+                console.log("> AuthService using token in localStorage", yield this.token());
+            }
         });
-        console.log("> AuthService got token", token);
     }
     get apiUrl() {
         return DataService_1.DataService.server;
     }
-    async logout() {
-        this.localStorageService.clear();
-        // await IdbDeleteAllDatabases();
-        window.location.reload();
+    logout() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.localStorageService.clear();
+            // await IdbDeleteAllDatabases();
+        });
     }
-    async token() {
-        let token;
-        if (this.localStorageService.getItem("token")) {
-            token = JSON.parse(this.localStorageService.getItem("token"));
-        }
-        if (token) {
-            if (token.expires_at - Date.now() < 60000) {
-                token = await this.refreshToken(token);
+    token() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let token;
+            if (this.localStorageService.getItem("token")) {
+                token = JSON.parse(this.localStorageService.getItem("token"));
             }
-        }
-        if (!token) {
-            this.localStorageService.removeItem("token");
-        }
-        // console.log('token()',token);
-        if (token && token.access_token) {
-            this.loggedIn = true;
-            return token;
-        }
-        else {
-            this.loggedIn = false;
-            throw new Error("cant get token");
-        }
-    }
-    async register(mobile, password) {
-        return this.httpClientService.request({
-            method: "post",
-            url: this.apiUrl + "/api/auth/register",
-            json: {
-                username: mobile,
-                mobile: mobile,
-                password: password
+            if (token) {
+                if (token.expires_at - Date.now() < 60000) {
+                    token = yield this.refreshToken(token);
+                }
+            }
+            if (!token) {
+                this.localStorageService.removeItem("token");
+            }
+            // console.log('token()',token);
+            if (token && token.access_token) {
+                this.loggedIn = true;
+                return token;
+            }
+            else {
+                this.loggedIn = false;
+                throw new Error("cant get token");
             }
         });
     }
-    async sendVerify(mobile) {
-        return this.httpClientService.request({
-            method: "post",
-            url: this.apiUrl + "/api/auth/sendVerifySms",
-            json: {
-                mobile: mobile
-            }
-        });
-    }
-    async sendOneTimePassword(mobile, timeout) {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                reject({ status: 0 });
-            }, timeout || 3000);
-            return this.httpClientService
-                .request({
+    register(mobile, password) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.httpClientService.request({
                 method: "post",
-                url: this.apiUrl + "/api/auth/oneTimePassword",
+                url: this.apiUrl + "/api/auth/register",
+                json: {
+                    username: mobile,
+                    mobile: mobile,
+                    password: password
+                }
+            });
+        });
+    }
+    sendVerify(mobile) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.httpClientService.request({
+                method: "post",
+                url: this.apiUrl + "/api/auth/sendVerifySms",
                 json: {
                     mobile: mobile
                 }
-            })
-                .then(res => {
-                resolve(res);
-            })
-                .catch(err => {
-                reject(err);
             });
         });
     }
-    async sendResetPasswordToken(mobile) {
-        return this.httpClientService.request({
-            url: this.apiUrl + "/api/auth/sendResetPasswordToken",
-            json: {
-                mobile: mobile
-            }
+    sendOneTimePassword(mobile, timeout) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    reject({ status: 0 });
+                }, timeout || 3000);
+                return this.httpClientService
+                    .request({
+                    method: "post",
+                    url: this.apiUrl + "/api/auth/oneTimePassword",
+                    json: {
+                        mobile: mobile
+                    }
+                })
+                    .then(res => {
+                    resolve(res);
+                })
+                    .catch(err => {
+                    reject(err);
+                });
+            });
         });
     }
-    async verifyMobile(mobile, code) {
-        return this.httpClientService.request({
-            method: "post",
-            url: this.apiUrl + "/api/auth/verifyMobile",
-            json: {
-                mobile: mobile,
-                code: code
-            }
-        });
-    }
-    async resetPassword(mobile, code, password, passwordConfirm) {
-        return this.httpClientService.request({
-            url: this.apiUrl + "/api/auth/resetPassword",
-            json: {
-                mobile: mobile,
-                code: code,
-                password: password,
-                passwordConfirm: passwordConfirm
-            }
-        });
-    }
-    async login(opts) {
-        const newToken = await this.httpClientService.request({
-            url: this.apiUrl + "/api/auth/token",
-            method: "post",
-            json: _.extend({
-                grant_type: "password"
-            }, opts)
-        });
-        if (!newToken) {
-            throw new Error("empty token");
-        }
-        // console.log("newToken", newToken);
-        this.loggedIn = true;
-        this.localStorageService.setItem("token", JSON.stringify(newToken));
-        return newToken;
-    }
-    async refreshToken(token) {
-        try {
-            const newToken = await this.httpClientService.request({
-                method: "post",
-                url: this.apiUrl + "/api/auth/refreshToken",
+    sendResetPasswordToken(mobile) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.httpClientService.request({
+                url: this.apiUrl + "/api/auth/sendResetPasswordToken",
                 json: {
-                    refresh_token: token.refresh_token,
-                    access_token: token.access_token
+                    mobile: mobile
                 }
             });
+        });
+    }
+    verifyMobile(mobile, code) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.httpClientService.request({
+                method: "post",
+                url: this.apiUrl + "/api/auth/verifyMobile",
+                json: {
+                    mobile: mobile,
+                    code: code
+                }
+            });
+        });
+    }
+    resetPassword(mobile, code, password, passwordConfirm) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.httpClientService.request({
+                url: this.apiUrl + "/api/auth/resetPassword",
+                json: {
+                    mobile: mobile,
+                    code: code,
+                    password: password,
+                    passwordConfirm: passwordConfirm
+                }
+            });
+        });
+    }
+    login(opts) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const newToken = yield this.httpClientService.request({
+                url: this.apiUrl + "/api/auth/token",
+                method: "post",
+                json: _.extend({
+                    grant_type: "password"
+                }, opts)
+            });
+            if (!newToken) {
+                throw new Error("empty token");
+            }
+            // console.log("newToken", newToken);
+            this.loggedIn = true;
             this.localStorageService.setItem("token", JSON.stringify(newToken));
             return newToken;
-        }
-        catch (res) {
-            if (res.status === 401 || res.status === 400) {
-                this.logout();
+        });
+    }
+    refreshToken(token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const newToken = yield this.httpClientService.request({
+                    method: "post",
+                    url: this.apiUrl + "/api/auth/refreshToken",
+                    json: {
+                        refresh_token: token.refresh_token,
+                        access_token: token.access_token
+                    }
+                });
+                this.localStorageService.setItem("token", JSON.stringify(newToken));
+                return newToken;
             }
-            else {
-                return token;
+            catch (res) {
+                if (res.status === 401 || res.status === 400) {
+                    this.logout();
+                }
+                else {
+                    return token;
+                }
             }
-        }
+        });
     }
 }
 AuthService.options = {

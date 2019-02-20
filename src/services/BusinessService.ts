@@ -1,8 +1,10 @@
 import { BusinessModel } from "serendip-business-model";
-import { ServerServiceInterface } from "serendip/src";
 import { LocalStorageService } from "./LocalStorageService";
+import { ClientServiceInterface } from "../Client";
 
-export class BusinessService implements ServerServiceInterface {
+export class BusinessService implements ClientServiceInterface {
+  businesses: any;
+
   async start() {}
   private _business: BusinessModel;
 
@@ -12,6 +14,7 @@ export class BusinessService implements ServerServiceInterface {
     } else if (this.localStorageService.getItem("business")) {
       return JSON.parse(this.localStorageService.getItem("business"));
     }
+    return undefined;
   }
 
   set business(val) {

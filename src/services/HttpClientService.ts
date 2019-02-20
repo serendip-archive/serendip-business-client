@@ -1,6 +1,6 @@
-import { ServerServiceInterface, Server } from "serendip";
 import * as Request from "request";
-export class HttpClientService implements ServerServiceInterface {
+import { ClientServiceInterface } from "../Client";
+export class HttpClientService implements ClientServiceInterface {
   async start() {}
 
   request<T>(

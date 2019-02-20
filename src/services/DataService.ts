@@ -2,8 +2,8 @@ import * as JsZip from "jszip";
 import {
   ReportInterface,
   EntityModel,
-  UserProfileModel,
-  BusinessModel
+  BusinessModel,
+  ProfileModel
 } from "serendip-business-model";
 import * as utils from "serendip-utility";
 import * as _ from "underscore";
@@ -13,12 +13,12 @@ import {} from "ndx";
 import ObjectID from "bson-objectid";
 import { ObService } from "./ObService";
 
-import { DbService } from "serendip";
 import { BusinessService } from "./BusinessService";
 import { HttpClientService } from "./HttpClientService";
-import * as promiseSerial from "promise-serial";
 import { LocalStorageService } from "./LocalStorageService";
-import { ServerServiceInterface } from "serendip/src";
+import chalk from "chalk";
+import { ClientServiceInterface } from "../Client";
+import { DbService } from "./DbService";
 
 export interface DataRequestInterface {
   method: string | "POST" | "GET";
@@ -32,8 +32,27 @@ export interface DataRequestInterface {
   timeout?: number;
 }
 
-export class DataService implements ServerServiceInterface {
-  async start() {}
+export class DataService implements ClientServiceInterface {
+  async start() {
+    try {
+      this.businessService.businesses = await this.businesses();
+      if (!this.businessService.business)
+        this.businessService.business = this.businessService.businesses[0];
+      console.log(
+        "> DataService loaded businesses: \n",
+        this.businessService.businesses
+          .map(p => `\t ${p._id} ${p.title}\n`)
+          .join("")
+      );
+    } catch (error) {}
+    if (this.businessService.business)
+      console.log(
+        "> DataService default business _id: " +
+          this.businessService.business._id
+      );
+    else
+      throw "DataService could not work without default business. provide one via DataService.configure method or connect to the server";
+  }
   // public collectionsTextIndex: DocumentIndex[];
 
   static dependencies = [];
@@ -50,7 +69,7 @@ export class DataService implements ServerServiceInterface {
     { label: "سرور توسعه محلی", value: "http://localhost:2040" }
   ];
 
-  static server: string = "http://localhost:2040";
+  static server: string = "https://business.serendip.cloud";
 
   constructor(
     private localStorageService: LocalStorageService,
@@ -109,7 +128,7 @@ export class DataService implements ServerServiceInterface {
     this.localStorageService.setItem("server", lsServer);
   }
 
-  async profile(): Promise<UserProfileModel> {
+  async profile(): Promise<ProfileModel> {
     let profileLs = this.localStorageService.getItem("profile");
 
     try {
@@ -184,7 +203,7 @@ export class DataService implements ServerServiceInterface {
           opts.raw ? "response" : "body"
         );
       } catch (error) {
-        console.warn("request error", opts, error);
+        console.log("request error", opts.path, error.message);
         if (error.status === 401) {
           this.authService.logout();
         }
