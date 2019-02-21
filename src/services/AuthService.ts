@@ -73,7 +73,7 @@ export class AuthService implements ClientServiceInterface {
       return token;
     } else {
       this.loggedIn = false;
-      throw new Error("cant get token");
+      return undefined;
     }
   }
 
@@ -181,7 +181,7 @@ export class AuthService implements ClientServiceInterface {
       throw new Error("empty token");
     }
 
-    // console.log("newToken", newToken);
+    console.log("newToken", newToken);
 
     this.loggedIn = true;
 

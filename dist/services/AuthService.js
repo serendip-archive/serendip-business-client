@@ -65,7 +65,7 @@ class AuthService {
             }
             else {
                 this.loggedIn = false;
-                throw new Error("cant get token");
+                return undefined;
             }
         });
     }
@@ -163,7 +163,7 @@ class AuthService {
             if (!newToken) {
                 throw new Error("empty token");
             }
-            // console.log("newToken", newToken);
+            console.log("newToken", newToken);
             this.loggedIn = true;
             this.localStorageService.setItem("token", JSON.stringify(newToken));
             return newToken;

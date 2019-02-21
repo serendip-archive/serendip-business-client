@@ -1,6 +1,6 @@
 {
   "name": "serendip-business-client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "API client for Serendip business services.",
   "main": "index.js",
   "bin": {
@@ -34,19 +34,21 @@
     "underscore": "^1.9.1"
   },
   "devDependencies": {
-    "@types/fs-extra": "^5.0.4",
+    "@types/fs-extra": "^5.0.5",
     "@types/glob": "^7.1.1",
     "@types/handlebars": "^4.0.40",
     "@types/html-minifier": "^3.5.2",
     "@types/node": "^10.12.18",
     "@types/request": "^2.48.1",
     "@types/underscore": "^1.8.9",
+    "@types/ws": "^6.0.1",
     "fs-extra": "^7.0.1",
     "gulp": "^3.9.1",
     "gulp-clean": "^0.4.0",
     "gulp-mocha": "^6.0.0",
     "gulp-typescript": "^5.0.0",
-    "serendip-provider-mongodb": "^1.0.2",
-    "typescript": "^3.3.3"
+    "serendip-mongodb-provider": "^1.0.2",
+    "typescript": "^3.3.3",
+    "ws": "^6.1.4"
   }
 }

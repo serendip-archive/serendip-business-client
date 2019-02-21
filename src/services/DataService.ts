@@ -11,7 +11,6 @@ import * as _ from "underscore";
 import { AuthService } from "./AuthService";
 import {} from "ndx";
 import ObjectID from "bson-objectid";
-import { ObService } from "./ObService";
 
 import { BusinessService } from "./BusinessService";
 import { HttpClientService } from "./HttpClientService";
@@ -69,17 +68,16 @@ export class DataService implements ClientServiceInterface {
     { label: "سرور توسعه محلی", value: "http://localhost:2040" }
   ];
 
-  static server: string = "https://business.serendip.cloud";
+  static server: string = "http://localhost:2040";
 
   constructor(
     private localStorageService: LocalStorageService,
-    private obService: ObService,
     private authService: AuthService,
     private httpClientService: HttpClientService,
     private dbService: DbService,
     private businessService: BusinessService
   ) {
-    this.setCurrentServer();
+  //  this.setCurrentServer();
   }
 
   async businesses(): Promise<BusinessModel[]> {
@@ -478,7 +476,7 @@ export class DataService implements ClientServiceInterface {
     });
 
     await this.updateIDB(model, controller);
-    this.obService.publish(controller, "insert", model);
+    //  this.obService.publish(controller, "insert", model);
 
     return result;
   }
@@ -490,7 +488,7 @@ export class DataService implements ClientServiceInterface {
 
     await this.updateIDB(model, controller);
 
-    this.obService.publish(controller, "update", model);
+    // this.obService.publish(controller, "update", model);
 
     await this.request({
       method: "POST",
@@ -510,7 +508,7 @@ export class DataService implements ClientServiceInterface {
 
     collection.deleteOne(_id);
 
-    this.obService.publish(controller, "delete", model);
+    //   this.obService.publish(controller, "delete", model);
 
     console.log("model to delete", model);
     await this.request({

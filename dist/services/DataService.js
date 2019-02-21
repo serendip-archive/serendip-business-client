@@ -13,9 +13,8 @@ const utils = require("serendip-utility");
 const _ = require("underscore");
 const bson_objectid_1 = require("bson-objectid");
 class DataService {
-    constructor(localStorageService, obService, authService, httpClientService, dbService, businessService) {
+    constructor(localStorageService, authService, httpClientService, dbService, businessService) {
         this.localStorageService = localStorageService;
-        this.obService = obService;
         this.authService = authService;
         this.httpClientService = httpClientService;
         this.dbService = dbService;
@@ -29,7 +28,7 @@ class DataService {
             { label: "سرور توسعه کلاد", value: "http://dev.serendip.cloud:2040" },
             { label: "سرور توسعه محلی", value: "http://localhost:2040" }
         ];
-        this.setCurrentServer();
+        //  this.setCurrentServer();
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -389,7 +388,7 @@ class DataService {
                 retry: true
             });
             yield this.updateIDB(model, controller);
-            this.obService.publish(controller, "insert", model);
+            //  this.obService.publish(controller, "insert", model);
             return result;
         });
     }
@@ -399,7 +398,7 @@ class DataService {
                 model._id = new bson_objectid_1.default().str;
             }
             yield this.updateIDB(model, controller);
-            this.obService.publish(controller, "update", model);
+            // this.obService.publish(controller, "update", model);
             yield this.request({
                 method: "POST",
                 path: `/api/entity/${controller}/update`,
@@ -415,7 +414,7 @@ class DataService {
             let model = { _id: _id };
             const collection = yield this.dbService.collection(controller);
             collection.deleteOne(_id);
-            this.obService.publish(controller, "delete", model);
+            //   this.obService.publish(controller, "delete", model);
             console.log("model to delete", model);
             yield this.request({
                 method: "POST",
@@ -589,5 +588,5 @@ class DataService {
 }
 // public collectionsTextIndex: DocumentIndex[];
 DataService.dependencies = [];
-DataService.server = "https://business.serendip.cloud";
+DataService.server = "http://localhost:2040";
 exports.DataService = DataService;
