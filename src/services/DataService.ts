@@ -16,7 +16,7 @@ import { BusinessService } from "./BusinessService";
 import { HttpClientService } from "./HttpClientService";
 import { LocalStorageService } from "./LocalStorageService";
 import chalk from "chalk";
-import { ClientServiceInterface } from "../Client";
+import { ClientServiceInterface, Client } from "../Client";
 import { DbService } from "./DbService";
 
 export interface DataRequestInterface {
@@ -33,17 +33,18 @@ export interface DataRequestInterface {
 
 export class DataService implements ClientServiceInterface {
   async start() {
-    try {
-      this.businessService.businesses = await this.businesses();
-      if (!this.businessService.business)
-        this.businessService.business = this.businessService.businesses[0];
-      console.log(
-        "> DataService loaded businesses: \n",
-        this.businessService.businesses
-          .map(p => `\t ${p._id} ${p.title}\n`)
-          .join("")
-      );
-    } catch (error) {}
+    if (Client.services.dbService) this.dbService = Client.services.dbService;
+
+    this.businessService.businesses = await this.businesses();
+    if (!this.businessService.business)
+      this.businessService.business = this.businessService.businesses[0];
+    console.log(
+      "> DataService loaded businesses: \n",
+      this.businessService.businesses
+        .map(p => `\t ${p._id} ${p.title}\n`)
+        .join("")
+    );
+
     if (this.businessService.business)
       console.log(
         "> DataService default business _id: " +
@@ -54,7 +55,11 @@ export class DataService implements ClientServiceInterface {
   }
   // public collectionsTextIndex: DocumentIndex[];
 
-  static dependencies = [];
+  static get dependencies() {
+    if (Client.opts.services.filter(p => p.name == "DbService").length == 1)
+      return ["DbService"];
+    return [];
+  }
   collectionsTextIndexCache: { [key: string]: any } = {};
 
   commonEnglishWordsIndexCache: any;
@@ -68,16 +73,16 @@ export class DataService implements ClientServiceInterface {
     { label: "سرور توسعه محلی", value: "http://localhost:2040" }
   ];
 
-  static server: string = "http://localhost:2040";
+  static server: string = "https://business.serendip.cloud";
+  private dbService: DbService;
 
   constructor(
     private localStorageService: LocalStorageService,
     private authService: AuthService,
     private httpClientService: HttpClientService,
-    private dbService: DbService,
     private businessService: BusinessService
   ) {
-  //  this.setCurrentServer();
+    //  this.setCurrentServer();
   }
 
   async businesses(): Promise<BusinessModel[]> {
@@ -164,6 +169,12 @@ export class DataService implements ClientServiceInterface {
       try {
         const token = await this.authService.token();
 
+        if (!token)
+          return reject(
+            "serendip business client got no token to send authenticated request to " +
+              opts.path
+          );
+
         if (!opts.model._business) {
           if (this.businessService.business) {
             opts.model._business = this.businessService.business._id;
@@ -201,7 +212,6 @@ export class DataService implements ClientServiceInterface {
           opts.raw ? "response" : "body"
         );
       } catch (error) {
-        console.log("request error", opts.path, error.message);
         if (error.status === 401) {
           this.authService.logout();
         }
@@ -262,6 +272,8 @@ export class DataService implements ClientServiceInterface {
     offline?: boolean
   ): Promise<EntityModel[]> {
     if (offline) {
+      if (!this.dbService)
+      throw new Error("DbService not configured for serendip business client to provide offline data listing");
       const collection = await this.dbService.collection(controller);
       let data = await collection.find();
 
@@ -358,6 +370,9 @@ export class DataService implements ClientServiceInterface {
 
   async count(controller: string, offline?: boolean): Promise<number> {
     if (offline) {
+
+      if (!this.dbService)
+      throw new Error( "DbService not configured for serendip business client to provide offline data counting");
       const collection = await this.dbService.collection(controller);
 
       const data = await collection.find();

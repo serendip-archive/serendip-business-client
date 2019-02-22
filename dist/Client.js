@@ -22,6 +22,16 @@ class Client {
             .then(() => callback())
             .catch(e => callback(e));
     }
+    static bootstrap(opts) {
+        return new Promise((resolve, reject) => {
+            new Client(opts, (error) => {
+                if (error)
+                    return reject(error);
+                else
+                    return resolve();
+            });
+        });
+    }
     // FIXME: needs refactor
     addServices(serviceClasses) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -34,17 +44,17 @@ class Client {
             serviceClasses.forEach(sv => {
                 if (!sv)
                     return;
+                sUtil.functions.args(sv).forEach((dep) => {
+                    dep = sUtil.text.capitalizeFirstLetter(dep);
+                    if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
+                        unsortedDependencies.push([sv.name, dep]);
+                });
                 if (typeof sv.dependencies !== "undefined" && sv.dependencies.length)
                     sv.dependencies.forEach((dep) => {
                         dep = sUtil.text.capitalizeFirstLetter(dep);
                         if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
                             unsortedDependencies.push([sv.name, dep]);
                     });
-                sUtil.functions.args(sv).forEach((dep) => {
-                    dep = sUtil.text.capitalizeFirstLetter(dep);
-                    if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
-                        unsortedDependencies.push([sv.name, dep]);
-                });
                 serviceObjects[sv.name] = sv;
             });
             // TODO: replace toposort module with code :)
@@ -104,14 +114,10 @@ class Client {
                 return this.startService(index + 1, serviceObjects, sortedDependencies, unsortedDependencies);
             else {
                 if (Client.opts.logging == "info")
-                    console.log(`${(index + 1).toString().padStart(2, " ")} of ${Object.keys(serviceObjects)
-                        .length.toString()
-                        .padStart(2, "")} starting ${serviceName} it depends on: ${serviceDependencies.join(",") || "none"}`);
+                    console.log(`${(index + 1).toString()} of ${Object.keys(serviceObjects).length.toString()} starting ${serviceName} it depends on: ${serviceDependencies.join(",") || "none"}`);
                 yield serviceObject.start();
                 if (Client.opts.logging == "info")
-                    console.log(`${(index + 1).toString().padStart(2, " ")} of ${Object.keys(serviceObjects)
-                        .length.toString()
-                        .padStart(2, " ")} ☑ ${serviceName}`);
+                    console.log(`${(index + 1).toString()} of ${Object.keys(serviceObjects).length.toString()} ☑ ${serviceName}`);
                 if (sortedDependencies.length > index + 1)
                     return this.startService(index + 1, serviceObjects, sortedDependencies, unsortedDependencies);
                 return;

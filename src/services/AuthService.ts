@@ -21,11 +21,16 @@ export class AuthService implements ClientServiceInterface {
 
   async start() {
     if (!(await this.token())) {
-      const token = await this.login({
-        username: AuthService.options.username,
-        password: AuthService.options.password
-      });
-      console.log("> AuthService got token", token);
+      if (!AuthService.options.username || !AuthService.options.password) {
+
+        console.log('provide usernme/password in AuthService.options to get token at start.')
+      } else {
+        const token = await this.login({
+          username: AuthService.options.username,
+          password: AuthService.options.password
+        });
+        console.log("> AuthService got token", token);
+      }
     } else {
       console.log(
         "> AuthService using token in localStorage",
@@ -166,22 +171,26 @@ export class AuthService implements ClientServiceInterface {
     password?: string;
     oneTimePassword?: string;
   }): Promise<TokenModel> {
-    const newToken = await this.httpClientService.request({
-      url: this.apiUrl + "/api/auth/token",
-      method: "post",
-      json: _.extend(
-        {
-          grant_type: "password"
-        },
-        opts
-      )
-    });
+    let newToken;
+
+    try {
+      newToken = await this.httpClientService.request({
+        url: this.apiUrl + "/api/auth/token",
+        method: "post",
+        json: _.extend(
+          {
+            grant_type: "password"
+          },
+          opts
+        )
+      });
+    } catch (error) {
+      throw error;
+    }
 
     if (!newToken) {
       throw new Error("empty token");
     }
-
-    console.log("newToken", newToken);
 
     this.loggedIn = true;
 

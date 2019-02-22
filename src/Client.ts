@@ -17,13 +17,7 @@ export interface ClientOptionsInterface {
   // Client services to start.
   services?: ClientServiceInterface[] | any[];
 
-  // Number CPU cores for cpu clustering. set to 'max' for running on all cpu cores
-  cpuCores?: number | string;
-
   logging?: "info" | "warn" | "error" | "silent";
-
-  // Set to true for disabling http(s) Client. this is useful when you are building client apps without a http(s) Client
-  clientMode?: boolean;
 }
 
 /**
@@ -46,6 +40,15 @@ export class Client {
       .catch(e => callback(e));
   }
 
+  static bootstrap(opts: ClientOptionsInterface) {
+    return new Promise((resolve, reject) => {
+      new Client(opts, (error?) => {
+        if (error) return reject(error);
+        else return resolve();
+      });
+    });
+  }
+
   // FIXME: needs refactor
   private async addServices(serviceClasses: any[]) {
     if (!serviceClasses) return;
@@ -57,18 +60,18 @@ export class Client {
     serviceClasses.forEach(sv => {
       if (!sv) return;
 
+      sUtil.functions.args(sv).forEach((dep: any) => {
+        dep = sUtil.text.capitalizeFirstLetter(dep);
+        if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
+          unsortedDependencies.push([sv.name, dep]);
+      });
+
       if (typeof sv.dependencies !== "undefined" && sv.dependencies.length)
         sv.dependencies.forEach((dep: any) => {
           dep = sUtil.text.capitalizeFirstLetter(dep);
           if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
             unsortedDependencies.push([sv.name, dep]);
         });
-
-      sUtil.functions.args(sv).forEach((dep: any) => {
-        dep = sUtil.text.capitalizeFirstLetter(dep);
-        if (unsortedDependencies.indexOf([sv.name, dep]) === -1)
-          unsortedDependencies.push([sv.name, dep]);
-      });
 
       serviceObjects[sv.name] = sv;
     });
@@ -161,14 +164,9 @@ export class Client {
     else {
       if (Client.opts.logging == "info")
         console.log(
-          `${(index + 1).toString().padStart(2, " ")} of ${Object.keys(
+          `${(index + 1).toString()} of ${Object.keys(
             serviceObjects
-          )
-            .length.toString()
-            .padStart(
-              2,
-              ""
-            )} starting ${serviceName} it depends on: ${serviceDependencies.join(
+          ).length.toString()} starting ${serviceName} it depends on: ${serviceDependencies.join(
             ","
           ) || "none"}`
         );
@@ -177,11 +175,9 @@ export class Client {
 
       if (Client.opts.logging == "info")
         console.log(
-          `${(index + 1).toString().padStart(2, " ")} of ${Object.keys(
+          `${(index + 1).toString()} of ${Object.keys(
             serviceObjects
-          )
-            .length.toString()
-            .padStart(2, " ")} ☑ ${serviceName}`
+          ).length.toString()} ☑ ${serviceName}`
         );
 
       if (sortedDependencies.length > index + 1)

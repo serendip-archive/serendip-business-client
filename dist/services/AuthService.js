@@ -24,11 +24,16 @@ class AuthService {
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!(yield this.token())) {
-                const token = yield this.login({
-                    username: AuthService.options.username,
-                    password: AuthService.options.password
-                });
-                console.log("> AuthService got token", token);
+                if (!AuthService.options.username || !AuthService.options.password) {
+                    console.log('provide usernme/password in AuthService.options to get token at start.');
+                }
+                else {
+                    const token = yield this.login({
+                        username: AuthService.options.username,
+                        password: AuthService.options.password
+                    });
+                    console.log("> AuthService got token", token);
+                }
             }
             else {
                 console.log("> AuthService using token in localStorage", yield this.token());
@@ -153,17 +158,22 @@ class AuthService {
     }
     login(opts) {
         return __awaiter(this, void 0, void 0, function* () {
-            const newToken = yield this.httpClientService.request({
-                url: this.apiUrl + "/api/auth/token",
-                method: "post",
-                json: _.extend({
-                    grant_type: "password"
-                }, opts)
-            });
+            let newToken;
+            try {
+                newToken = yield this.httpClientService.request({
+                    url: this.apiUrl + "/api/auth/token",
+                    method: "post",
+                    json: _.extend({
+                        grant_type: "password"
+                    }, opts)
+                });
+            }
+            catch (error) {
+                throw error;
+            }
             if (!newToken) {
                 throw new Error("empty token");
             }
-            console.log("newToken", newToken);
             this.loggedIn = true;
             this.localStorageService.setItem("token", JSON.stringify(newToken));
             return newToken;

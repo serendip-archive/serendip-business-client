@@ -12,12 +12,12 @@ const JsZip = require("jszip");
 const utils = require("serendip-utility");
 const _ = require("underscore");
 const bson_objectid_1 = require("bson-objectid");
+const Client_1 = require("../Client");
 class DataService {
-    constructor(localStorageService, authService, httpClientService, dbService, businessService) {
+    constructor(localStorageService, authService, httpClientService, businessService) {
         this.localStorageService = localStorageService;
         this.authService = authService;
         this.httpClientService = httpClientService;
-        this.dbService = dbService;
         this.businessService = businessService;
         this.collectionsTextIndexCache = {};
         this.serversToSelect = [
@@ -32,21 +32,26 @@ class DataService {
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                this.businessService.businesses = yield this.businesses();
-                if (!this.businessService.business)
-                    this.businessService.business = this.businessService.businesses[0];
-                console.log("> DataService loaded businesses: \n", this.businessService.businesses
-                    .map(p => `\t ${p._id} ${p.title}\n`)
-                    .join(""));
-            }
-            catch (error) { }
+            if (Client_1.Client.services.dbService)
+                this.dbService = Client_1.Client.services.dbService;
+            this.businessService.businesses = yield this.businesses();
+            if (!this.businessService.business)
+                this.businessService.business = this.businessService.businesses[0];
+            console.log("> DataService loaded businesses: \n", this.businessService.businesses
+                .map(p => `\t ${p._id} ${p.title}\n`)
+                .join(""));
             if (this.businessService.business)
                 console.log("> DataService default business _id: " +
                     this.businessService.business._id);
             else
                 throw "DataService could not work without default business. provide one via DataService.configure method or connect to the server";
         });
+    }
+    // public collectionsTextIndex: DocumentIndex[];
+    static get dependencies() {
+        if (Client_1.Client.opts.services.filter(p => p.name == "DbService").length == 1)
+            return ["DbService"];
+        return [];
     }
     businesses() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -130,6 +135,9 @@ class DataService {
             }
             try {
                 const token = yield this.authService.token();
+                if (!token)
+                    return reject("serendip business client got no token to send authenticated request to " +
+                        opts.path);
                 if (!opts.model._business) {
                     if (this.businessService.business) {
                         opts.model._business = this.businessService.business._id;
@@ -160,7 +168,6 @@ class DataService {
                 }, opts.raw ? "response" : "body");
             }
             catch (error) {
-                console.log("request error", opts.path, error.message);
                 if (error.status === 401) {
                     this.authService.logout();
                 }
@@ -207,6 +214,8 @@ class DataService {
     list(controller, skip, limit, offline) {
         return __awaiter(this, void 0, void 0, function* () {
             if (offline) {
+                if (!this.dbService)
+                    throw new Error("DbService not configured for serendip business client to provide offline data listing");
                 const collection = yield this.dbService.collection(controller);
                 let data = yield collection.find();
                 if (skip && limit) {
@@ -286,6 +295,8 @@ class DataService {
     count(controller, offline) {
         return __awaiter(this, void 0, void 0, function* () {
             if (offline) {
+                if (!this.dbService)
+                    throw new Error("DbService not configured for serendip business client to provide offline data counting");
                 const collection = yield this.dbService.collection(controller);
                 const data = yield collection.find();
                 return data.length;
@@ -586,7 +597,5 @@ class DataService {
         });
     }
 }
-// public collectionsTextIndex: DocumentIndex[];
-DataService.dependencies = [];
-DataService.server = "http://localhost:2040";
+DataService.server = "https://business.serendip.cloud";
 exports.DataService = DataService;
