@@ -6,6 +6,8 @@ import {
 } from "serendip-business-model";
 import { ClientServiceInterface } from "../Client";
 
+import { NedbProvider } from "serendip-nedb-provider";
+
 export interface DbServiceOptions {
   /**
    * name of default provider. will be used in case of executing collection without provider argument set
@@ -26,14 +28,28 @@ export interface DbServiceOptions {
 export class DbService implements ClientServiceInterface {
   static dependencies = [];
 
-  static options: DbServiceOptions = {};
+  static options: DbServiceOptions;
+
+  // static options: DbServiceOptions = {
+  //   defaultProvider: "Nedb",
+  //   providers: {
+  //     Nedb: {
+  //       object: new NedbProvider(),
+  //       options: {
+  //         folderPath: ".db"
+  //       }
+  //     }
+  //   }
+  // };
 
   static configure(options: DbServiceOptions) {
-    DbService.options = _.extend(DbService.options, options);
+    DbService.options = options;
   }
 
   private providers: { [key: string]: DbProviderInterface } = {};
   async start() {
+    if (!DbService.options)
+      throw "\n\tconfigure DbService options and providers.\n";
     for (const key of Object.keys(DbService.options.providers)) {
       const provider = DbService.options.providers[key];
       console.log(`DbService > trying to connect to DbProvider named: ${key}`);

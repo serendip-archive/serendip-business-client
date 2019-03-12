@@ -15,7 +15,6 @@ import ObjectID from "bson-objectid";
 import { BusinessService } from "./BusinessService";
 import { HttpClientService } from "./HttpClientService";
 import { LocalStorageService } from "./LocalStorageService";
-import chalk from "chalk";
 import { ClientServiceInterface, Client } from "../Client";
 import { DbService } from "./DbService";
 
@@ -32,12 +31,27 @@ export interface DataRequestInterface {
 }
 
 export class DataService implements ClientServiceInterface {
+  static options: any = {};
+  static configure(opts) {
+    DataService.options = opts;
+  }
   async start() {
     if (Client.services.dbService) this.dbService = Client.services.dbService;
 
     this.businessService.businesses = await this.businesses();
-    if (!this.businessService.business)
+
+    if (DataService.options && DataService.options.business) {
+      this.businessService.business = _.findWhere(
+        this.businessService.businesses,
+        { _id: DataService.options.business }
+      );
+    } else if (this.businessService.businesses.length > 0)
       this.businessService.business = this.businessService.businesses[0];
+
+    if (!this.businessService.business) {
+      throw new Error("business not set");
+    }
+
     console.log(
       "> DataService loaded businesses: \n",
       this.businessService.businesses
@@ -56,7 +70,10 @@ export class DataService implements ClientServiceInterface {
   // public collectionsTextIndex: DocumentIndex[];
 
   static get dependencies() {
-    if (Client.opts.services.filter(p => p.name == "DbService").length == 1)
+    if (
+      (Client.opts.services as any).filter(p => p.name == "DbService").length ==
+      1
+    )
       return ["DbService"];
     return [];
   }
@@ -74,16 +91,48 @@ export class DataService implements ClientServiceInterface {
   ];
 
   static server: string = "https://business.serendip.cloud";
-  private dbService: DbService;
 
   constructor(
     private localStorageService: LocalStorageService,
     private authService: AuthService,
     private httpClientService: HttpClientService,
+    private dbService: DbService,
     private businessService: BusinessService
   ) {
     //  this.setCurrentServer();
   }
+
+  // decrypt(model: EntityModel) {
+  //   if (!model._aes) {
+  //     return model;
+  //   }
+
+  //   try {
+  //     const aesKey = cryptico.decrypt(
+  //       model._aes,
+  //       this.businessService.privateKey
+  //     ).plaintext;
+
+  //     const dAesCtr = new aesjs.ModeOfOperation.ctr(
+  //       aesjs.utils.utf8.toBytes(aesKey),
+  //       new aesjs.Counter(5)
+  //     );
+  //     const decryptedModel = JSON.parse(
+  //       aesjs.utils.utf8.fromBytes(
+  //         dAesCtr.decrypt(aesjs.utils.hex.toBytes(model._hex))
+  //       )
+  //     );
+
+  //     delete model["_aes"];
+  //     delete model["_hex"];
+
+  //     return _.extend(model, decryptedModel);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+
+  //   return model;
+  // }
 
   async businesses(): Promise<BusinessModel[]> {
     return await this.request({
@@ -231,7 +280,6 @@ export class DataService implements ClientServiceInterface {
       resolve(result);
     });
   }
-
   public async zip<A>(
     controller: string,
     from?: number,
@@ -273,7 +321,9 @@ export class DataService implements ClientServiceInterface {
   ): Promise<EntityModel[]> {
     if (offline) {
       if (!this.dbService)
-      throw new Error("DbService not configured for serendip business client to provide offline data listing");
+        throw new Error(
+          "DbService not configured for serendip business client to provide offline data listing"
+        );
       const collection = await this.dbService.collection(controller);
       let data = await collection.find();
 
@@ -370,9 +420,10 @@ export class DataService implements ClientServiceInterface {
 
   async count(controller: string, offline?: boolean): Promise<number> {
     if (offline) {
-
       if (!this.dbService)
-      throw new Error( "DbService not configured for serendip business client to provide offline data counting");
+        throw new Error(
+          "DbService not configured for serendip business client to provide offline data counting"
+        );
       const collection = await this.dbService.collection(controller);
 
       const data = await collection.find();
@@ -405,7 +456,7 @@ export class DataService implements ClientServiceInterface {
       if (data[0]) {
         return data[0];
       } else {
-        throw error;
+        throw error || new Error("entity not found " + _id);
       }
     } else {
       try {
@@ -473,15 +524,19 @@ export class DataService implements ClientServiceInterface {
   async updateIDB(model: EntityModel, controller: string) {
     const collection = await this.dbService.collection(controller);
 
-    await collection.updateOne({
-      model
-    });
+    await collection.updateOne(model);
   }
 
   async insert(controller: string, model: EntityModel): Promise<EntityModel> {
     if (!model._id) {
       model._id = new ObjectID().str;
     }
+
+    if (model._access == "encrypted") {
+    }
+
+    await this.updateIDB(model, controller);
+    //  this.obService.publish(controller, "insert", model);
     const result = await this.request({
       method: "POST",
       path: `/api/entity/${controller}/insert`,
@@ -489,9 +544,6 @@ export class DataService implements ClientServiceInterface {
       model: model,
       retry: true
     });
-
-    await this.updateIDB(model, controller);
-    //  this.obService.publish(controller, "insert", model);
 
     return result;
   }
@@ -521,7 +573,9 @@ export class DataService implements ClientServiceInterface {
 
     const collection = await this.dbService.collection(controller);
 
-    collection.deleteOne(_id);
+    try {
+      await collection.deleteOne(_id);
+    } catch (error) {}
 
     //   this.obService.publish(controller, "delete", model);
 
@@ -570,7 +624,9 @@ export class DataService implements ClientServiceInterface {
         for (const id of changes.deleted) {
           try {
             await dbCollection.deleteOne(id);
-          } catch (error) {}
+          } catch (error) {
+            console.log("error in deleting entity from db", id, error);
+          }
         }
       }
     }
@@ -646,7 +702,7 @@ export class DataService implements ClientServiceInterface {
   }
 
   public async pullCollections(onCollectionSync?: Function) {
-    const baseCollections = ["dashboard", "entity", "form", "people", "report"];
+    const baseCollections = ["dashboard", "entity", "form", "report"];
     // FormsSchema.forEach(schema => {
     //   if (schema.entityName) {
     //     if (collections.indexOf(schema.entityName) === -1) {

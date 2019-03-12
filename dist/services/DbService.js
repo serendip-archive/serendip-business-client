@@ -16,11 +16,24 @@ class DbService {
     constructor() {
         this.providers = {};
     }
+    // static options: DbServiceOptions = {
+    //   defaultProvider: "Nedb",
+    //   providers: {
+    //     Nedb: {
+    //       object: new NedbProvider(),
+    //       options: {
+    //         folderPath: ".db"
+    //       }
+    //     }
+    //   }
+    // };
     static configure(options) {
         DbService.options = _.extend(DbService.options, options);
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!DbService.options)
+                throw "\n\tconfigure DbService options and providers.\n";
             for (const key of Object.keys(DbService.options.providers)) {
                 const provider = DbService.options.providers[key];
                 console.log(`DbService > trying to connect to DbProvider named: ${key}`);
@@ -41,5 +54,4 @@ class DbService {
     }
 }
 DbService.dependencies = [];
-DbService.options = {};
 exports.DbService = DbService;

@@ -14,10 +14,11 @@ const _ = require("underscore");
 const bson_objectid_1 = require("bson-objectid");
 const Client_1 = require("../Client");
 class DataService {
-    constructor(localStorageService, authService, httpClientService, businessService) {
+    constructor(localStorageService, authService, httpClientService, dbService, businessService) {
         this.localStorageService = localStorageService;
         this.authService = authService;
         this.httpClientService = httpClientService;
+        this.dbService = dbService;
         this.businessService = businessService;
         this.collectionsTextIndexCache = {};
         this.serversToSelect = [
@@ -30,13 +31,22 @@ class DataService {
         ];
         //  this.setCurrentServer();
     }
+    static configure(opts) {
+        DataService.options = opts;
+    }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             if (Client_1.Client.services.dbService)
                 this.dbService = Client_1.Client.services.dbService;
             this.businessService.businesses = yield this.businesses();
-            if (!this.businessService.business)
+            if (DataService.options && DataService.options.business) {
+                this.businessService.business = _.findWhere(this.businessService.businesses, { _id: DataService.options.business });
+            }
+            else if (this.businessService.businesses.length > 0)
                 this.businessService.business = this.businessService.businesses[0];
+            if (!this.businessService.business) {
+                throw new Error("business not set");
+            }
             console.log("> DataService loaded businesses: \n", this.businessService.businesses
                 .map(p => `\t ${p._id} ${p.title}\n`)
                 .join(""));
@@ -49,10 +59,37 @@ class DataService {
     }
     // public collectionsTextIndex: DocumentIndex[];
     static get dependencies() {
-        if (Client_1.Client.opts.services.filter(p => p.name == "DbService").length == 1)
+        if (Client_1.Client.opts.services.filter(p => p.name == "DbService").length ==
+            1)
             return ["DbService"];
         return [];
     }
+    // decrypt(model: EntityModel) {
+    //   if (!model._aes) {
+    //     return model;
+    //   }
+    //   try {
+    //     const aesKey = cryptico.decrypt(
+    //       model._aes,
+    //       this.businessService.privateKey
+    //     ).plaintext;
+    //     const dAesCtr = new aesjs.ModeOfOperation.ctr(
+    //       aesjs.utils.utf8.toBytes(aesKey),
+    //       new aesjs.Counter(5)
+    //     );
+    //     const decryptedModel = JSON.parse(
+    //       aesjs.utils.utf8.fromBytes(
+    //         dAesCtr.decrypt(aesjs.utils.hex.toBytes(model._hex))
+    //       )
+    //     );
+    //     delete model["_aes"];
+    //     delete model["_hex"];
+    //     return _.extend(model, decryptedModel);
+    //   } catch (error) {
+    //     console.log(error);
+    //   }
+    //   return model;
+    // }
     businesses() {
         return __awaiter(this, void 0, void 0, function* () {
             return yield this.request({
@@ -326,7 +363,7 @@ class DataService {
                     return data[0];
                 }
                 else {
-                    throw error;
+                    throw error || new Error("entity not found " + _id);
                 }
             }
             else {
@@ -381,9 +418,7 @@ class DataService {
     updateIDB(model, controller) {
         return __awaiter(this, void 0, void 0, function* () {
             const collection = yield this.dbService.collection(controller);
-            yield collection.updateOne({
-                model
-            });
+            yield collection.updateOne(model);
         });
     }
     insert(controller, model) {
@@ -391,6 +426,10 @@ class DataService {
             if (!model._id) {
                 model._id = new bson_objectid_1.default().str;
             }
+            if (model._access == "encrypted") {
+            }
+            yield this.updateIDB(model, controller);
+            //  this.obService.publish(controller, "insert", model);
             const result = yield this.request({
                 method: "POST",
                 path: `/api/entity/${controller}/insert`,
@@ -398,8 +437,6 @@ class DataService {
                 model: model,
                 retry: true
             });
-            yield this.updateIDB(model, controller);
-            //  this.obService.publish(controller, "insert", model);
             return result;
         });
     }
@@ -424,7 +461,10 @@ class DataService {
             console.log("delete", controller, _id);
             let model = { _id: _id };
             const collection = yield this.dbService.collection(controller);
-            collection.deleteOne(_id);
+            try {
+                yield collection.deleteOne(_id);
+            }
+            catch (error) { }
             //   this.obService.publish(controller, "delete", model);
             console.log("model to delete", model);
             yield this.request({
@@ -465,7 +505,9 @@ class DataService {
                         try {
                             yield dbCollection.deleteOne(id);
                         }
-                        catch (error) { }
+                        catch (error) {
+                            console.log("error in deleting entity from db", id, error);
+                        }
                     }
                 }
             }
@@ -526,7 +568,7 @@ class DataService {
     }
     pullCollections(onCollectionSync) {
         return __awaiter(this, void 0, void 0, function* () {
-            const baseCollections = ["dashboard", "entity", "form", "people", "report"];
+            const baseCollections = ["dashboard", "entity", "form", "report"];
             // FormsSchema.forEach(schema => {
             //   if (schema.entityName) {
             //     if (collections.indexOf(schema.entityName) === -1) {
@@ -597,5 +639,6 @@ class DataService {
         });
     }
 }
+DataService.options = {};
 DataService.server = "https://business.serendip.cloud";
 exports.DataService = DataService;
