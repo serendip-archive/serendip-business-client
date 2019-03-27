@@ -6,8 +6,6 @@ import {
 } from "serendip-business-model";
 import { ClientServiceInterface } from "../Client";
 
-import { NedbProvider } from "serendip-nedb-provider";
-
 export interface DbServiceOptions {
   /**
    * name of default provider. will be used in case of executing collection without provider argument set

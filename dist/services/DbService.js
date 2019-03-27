@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const _ = require("underscore");
 /**
  * Every functionality thats use database should use it trough this service
  */
@@ -28,7 +27,7 @@ class DbService {
     //   }
     // };
     static configure(options) {
-        DbService.options = _.extend(DbService.options, options);
+        DbService.options = options;
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {

@@ -32,7 +32,7 @@ var run = function() {
 };
 
 gulp.task("test", ["ts"], function() {
-  return gulp.src(["test/*.js"], { read: false }).pipe(
+  return gulp.src(["test/*.js"], { read: true }).pipe(
     mocha({
       reporter: "spec"
     })

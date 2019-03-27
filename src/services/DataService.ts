@@ -40,6 +40,13 @@ export class DataService implements ClientServiceInterface {
 
     this.businessService.businesses = await this.businesses();
 
+    console.log(
+      "> DataService loaded businesses: \n",
+      this.businessService.businesses
+        .map(p => `\t ${p._id} ${p.title}\n`)
+        .join("")
+    );
+
     if (DataService.options && DataService.options.business) {
       this.businessService.business = _.findWhere(
         this.businessService.businesses,
@@ -49,15 +56,8 @@ export class DataService implements ClientServiceInterface {
       this.businessService.business = this.businessService.businesses[0];
 
     if (!this.businessService.business) {
-      throw new Error("business not set");
+      throw new Error("business invalid or not set");
     }
-
-    console.log(
-      "> DataService loaded businesses: \n",
-      this.businessService.businesses
-        .map(p => `\t ${p._id} ${p.title}\n`)
-        .join("")
-    );
 
     if (this.businessService.business)
       console.log(
