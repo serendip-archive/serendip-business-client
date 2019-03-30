@@ -3,9 +3,23 @@ import { LocalStorageService } from "./LocalStorageService";
 import { ClientServiceInterface } from "../Client";
 
 export class BusinessService implements ClientServiceInterface {
-  businesses: any;
+  _businesses: BusinessModel[];
 
   async start() {}
+
+  get businesses(): BusinessModel[] {
+    if (this._businesses) {
+      return this._businesses;
+    } else if (this.localStorageService.getItem("businesses")) {
+      return JSON.parse(this.localStorageService.getItem("businesses"));
+    }
+    return undefined;
+  }
+
+  set businesses(val) {
+    this._businesses = val;
+    this.localStorageService.setItem("businesses", JSON.stringify(val));
+  }
   private _business: BusinessModel;
 
   get business(): BusinessModel {

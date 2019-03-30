@@ -38,7 +38,13 @@ export class DataService implements ClientServiceInterface {
   async start() {
     if (Client.services.dbService) this.dbService = Client.services.dbService;
 
+
+    try {
     this.businessService.businesses = await this.businesses();
+      
+    } catch (error) {
+      
+    }
 
     console.log(
       "> DataService loaded businesses: \n",
@@ -52,7 +58,10 @@ export class DataService implements ClientServiceInterface {
         this.businessService.businesses,
         { _id: DataService.options.business }
       );
-    } else if (this.businessService.businesses.length > 0)
+    } else if (
+      this.businessService.businesses &&
+      this.businessService.businesses.length > 0
+    )
       this.businessService.business = this.businessService.businesses[0];
 
     if (!this.businessService.business) {

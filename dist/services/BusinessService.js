@@ -15,6 +15,19 @@ class BusinessService {
     start() {
         return __awaiter(this, void 0, void 0, function* () { });
     }
+    get businesses() {
+        if (this._businesses) {
+            return this._businesses;
+        }
+        else if (this.localStorageService.getItem("businesses")) {
+            return JSON.parse(this.localStorageService.getItem("businesses"));
+        }
+        return undefined;
+    }
+    set businesses(val) {
+        this._businesses = val;
+        this.localStorageService.setItem("businesses", JSON.stringify(val));
+    }
     get business() {
         if (this._business) {
             return this._business;
