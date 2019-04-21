@@ -711,7 +711,7 @@ export class DataService implements ClientServiceInterface {
   }
 
   public async pullCollections(onCollectionSync?: Function) {
-    const baseCollections = ["dashboard", "entity", "form", "report"];
+   // const baseCollections = ["dashboard", "entity", "form", "report"];
     // FormsSchema.forEach(schema => {
     //   if (schema.entityName) {
     //     if (collections.indexOf(schema.entityName) === -1) {
@@ -727,10 +727,10 @@ export class DataService implements ClientServiceInterface {
     //   }
     // });
 
-    for (const collection of baseCollections) {
-      await this.pullCollection(collection);
-    }
-    const entityCollections = (await this.list("entity"))
+    // for (const collection of baseCollections) {
+    //   await this.pullCollection(collection);
+    // }
+    const entityCollections = (await this.list("_entity"))
       // .filter(p => p.offline)
       .map(p => p.name);
 

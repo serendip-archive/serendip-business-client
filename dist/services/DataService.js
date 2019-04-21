@@ -573,7 +573,7 @@ class DataService {
     }
     pullCollections(onCollectionSync) {
         return __awaiter(this, void 0, void 0, function* () {
-            const baseCollections = ["dashboard", "entity", "form", "report"];
+            // const baseCollections = ["dashboard", "entity", "form", "report"];
             // FormsSchema.forEach(schema => {
             //   if (schema.entityName) {
             //     if (collections.indexOf(schema.entityName) === -1) {
@@ -588,10 +588,10 @@ class DataService {
             //     }
             //   }
             // });
-            for (const collection of baseCollections) {
-                yield this.pullCollection(collection);
-            }
-            const entityCollections = (yield this.list("entity"))
+            // for (const collection of baseCollections) {
+            //   await this.pullCollection(collection);
+            // }
+            const entityCollections = (yield this.list("_entity"))
                 // .filter(p => p.offline)
                 .map(p => p.name);
             for (const collection of entityCollections) {
