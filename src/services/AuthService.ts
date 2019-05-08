@@ -1,3 +1,7 @@
+/**
+ * @module ClientAuth
+ */
+
 import { TokenModel } from "serendip-business-model";
 import { HttpClientService } from "./HttpClientService";
 import { LocalStorageService } from "./LocalStorageService";
@@ -5,20 +9,55 @@ import * as _ from "underscore";
 import { DataService } from "./DataService";
 import { ClientServiceInterface } from "../Client";
 
+
+/**
+ * this interface defines options needed to be configured to AuthService
+ * Example of configuring authService using this interface with env 
+ * ```typescript
+ * import * as SBC from "serendip-business-client";
+ * import * as dotenv from "dotenv";
+ * dotenv.config();
+ * SBC.AuthService.configure({
+ * username: process.env["sbc.username"],
+ * password: process.env["sbc.password"]
+ * });
+ * ```
+ */
 export interface AuthServiceOptions {
   username: string;
   password: string;
 }
+
+
+
+
+
+/**
+ *  AuthService implements [[ClientServiceInterface]] and is responsible for working with our business API authentication service.
+ * 
+ */
 export class AuthService implements ClientServiceInterface {
+
+  /**
+   * options is static variable
+   */
   static options: AuthServiceOptions = {
     username: "",
     password: ""
   };
 
+  /**
+   * helper function to configure authService options
+   * @param options [AuthServiceOptions]
+   */
   static configure(options: AuthServiceOptions) {
     AuthService.options = options;
   }
 
+
+  /**
+   * AuthService start method will try to authenticate with business api using options you provided for this service.
+   */
   async start() {
     if (!(await this.token())) {
       if (!AuthService.options.username || !AuthService.options.password) {
@@ -29,7 +68,9 @@ export class AuthService implements ClientServiceInterface {
           username: AuthService.options.username,
           password: AuthService.options.password
         });
+
         console.log("> AuthService got token", token);
+        
       }
     } else {
       console.log(

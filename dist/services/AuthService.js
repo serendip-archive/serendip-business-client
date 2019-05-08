@@ -1,4 +1,7 @@
 "use strict";
+/**
+ * @module ClientAuth
+ */
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -10,6 +13,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const _ = require("underscore");
 const DataService_1 = require("./DataService");
+/**
+ *  AuthService implements [[ClientServiceInterface]] and is responsible for working with our business API authentication service.
+ *
+ */
 class AuthService {
     constructor(httpClientService, localStorageService) {
         this.httpClientService = httpClientService;
@@ -18,9 +25,16 @@ class AuthService {
         this.loggedIn = false;
         this.profile = {};
     }
+    /**
+     * helper function to configure authService options
+     * @param options [AuthServiceOptions]
+     */
     static configure(options) {
         AuthService.options = options;
     }
+    /**
+     * AuthService start method will try to authenticate with business api using options you provided for this service.
+     */
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!(yield this.token())) {
@@ -204,6 +218,9 @@ class AuthService {
         });
     }
 }
+/**
+ * options is static variable
+ */
 AuthService.options = {
     username: "",
     password: ""

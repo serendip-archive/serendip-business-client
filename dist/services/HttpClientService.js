@@ -18,6 +18,8 @@ class HttpClientService {
             Request(opts, (err, res, body) => {
                 if (err)
                     return reject(err);
+                if (res.statusCode != 200)
+                    return reject(body);
                 if (returns == "response")
                     return resolve(res);
                 return resolve(body);

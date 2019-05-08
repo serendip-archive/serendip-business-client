@@ -9,7 +9,12 @@ export class HttpClientService implements ClientServiceInterface {
   ): Promise<T | any> {
     return new Promise((resolve, reject) => {
       Request(opts, (err, res, body) => {
+
+    
         if (err) return reject(err);
+
+        if(res.statusCode != 200)
+        return reject(body);
 
         if (returns == "response") return resolve(res);
 
