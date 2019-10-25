@@ -16,7 +16,7 @@ export class WsService {
   ) {}
 
   async newSocket(
-    path?,
+    path?: string,
     retry?: boolean,
     maxRetry?: number
   ): Promise<WebSocket> {
@@ -75,47 +75,33 @@ export class WsService {
 
   private initiateSocket(path?: string): Promise<WebSocket> {
     return new Promise(async (resolve, reject) => {
-      let wsConnection;
-
+      let wsConnection: WebSocket;
       const wsAddress =
         path.indexOf("://") !== -1
           ? path
           : DataService.server
               .replace("http:", "ws:")
               .replace("https:", "wss:") + (path || "");
-
       try {
         wsConnection = new WsService.options.webSocketClass(wsAddress);
       } catch (error) {
         reject(error);
       }
-
-      wsConnection.onclose = ev => {
+      wsConnection.onclose = (ev: any) => {
         reject(ev);
       };
-
-      wsConnection.onerror = ev => {
+      wsConnection.onerror = (ev: any) => {
         reject(ev);
       };
-
       wsConnection.onmessage = (ev: MessageEvent) => {
-        // FIXME: saw this method fired twice. find out why;
-        // console.log("ws initiate onmessage", ev);
-
         if (ev.data === "authenticated") {
           resolve(wsConnection);
         }
       };
 
       const token = await this.authService.token();
-
-      wsConnection.onopen = ev => {
+      wsConnection.onopen = () => {
         wsConnection.send(token.access_token);
-
-        // setInterval(() => {
-        //   if (wsConnection.readyState == wsConnection.OPEN)
-        //     wsConnection.send(new Date().toString());
-        // }, 2000);
       };
     });
   }

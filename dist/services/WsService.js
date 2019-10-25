@@ -74,26 +74,20 @@ class WsService {
             catch (error) {
                 reject(error);
             }
-            wsConnection.onclose = ev => {
+            wsConnection.onclose = (ev) => {
                 reject(ev);
             };
-            wsConnection.onerror = ev => {
+            wsConnection.onerror = (ev) => {
                 reject(ev);
             };
             wsConnection.onmessage = (ev) => {
-                // FIXME: saw this method fired twice. find out why;
-                // console.log("ws initiate onmessage", ev);
                 if (ev.data === "authenticated") {
                     resolve(wsConnection);
                 }
             };
             const token = yield this.authService.token();
-            wsConnection.onopen = ev => {
+            wsConnection.onopen = () => {
                 wsConnection.send(token.access_token);
-                // setInterval(() => {
-                //   if (wsConnection.readyState == wsConnection.OPEN)
-                //     wsConnection.send(new Date().toString());
-                // }, 2000);
             };
         }));
     }

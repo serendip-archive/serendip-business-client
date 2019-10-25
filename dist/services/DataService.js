@@ -41,8 +41,7 @@ class DataService {
             try {
                 this.businessService.businesses = yield this.businesses();
             }
-            catch (error) {
-            }
+            catch (error) { }
             console.log("> DataService loaded businesses: \n", this.businessService.businesses
                 .map(p => `\t ${p._id} ${p.title}\n`)
                 .join(""));
@@ -483,6 +482,7 @@ class DataService {
     }
     pullCollection(collection) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log("pulling " + collection);
             const dbCollection = yield this.dbService.collection(collection);
             const pullStore = yield this.dbService.collection("pull");
             let lastSync = 0;
@@ -494,11 +494,8 @@ class DataService {
             catch (e) {
                 console.log(e);
             }
-            if (lastSync) {
-                // TODO Delete removed items
-            }
             let changes;
-            let changesCount;
+            let changesCount = 0;
             changesCount = yield this.countChanges(collection, lastSync, Date.now());
             if (!changesCount) {
                 return;
@@ -524,6 +521,7 @@ class DataService {
                 lastSync, changes);
             const newData = yield this.zip(collection, lastSync, Date.now());
             for (const item of newData) {
+                console.log(item);
                 yield dbCollection.updateOne(item);
             }
             yield pullStore.insertOne({
@@ -534,113 +532,27 @@ class DataService {
         });
     }
     pushCollections() {
-        return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-            return resolve();
-            // const store = await this.idbService.syncIDB("push");
-            // const keys = await store.keys();
-            // const pushes = _.map(keys, key => {
-            //   return {
-            //     key: key,
-            //     promise: new Promise(async (_resolve, _reject) => {
-            //       const pushModel = await store.get(key);
-            //       await this.request(pushModel.opts);
-            //       _resolve();
-            //     })
-            //   };
-            // });
-            // const runInSeries = index => {
-            //   const pushModel: any = pushes[index];
-            //   pushModel.promise
-            //     .then(() => {
-            //       store.delete(pushModel.key);
-            //       index++;
-            //       if (index === pushes.length) {
-            //         resolve();
-            //       } else {
-            //         runInSeries(index);
-            //       }
-            //     })
-            //     .catch(e => {
-            //       reject();
-            //     });
-            // };
-            // if (pushes.length > 0) {
-            //   runInSeries(0);
-            // } else {
-            //   resolve();
-            // }
-        }));
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                return resolve();
+            }));
+        });
     }
     pullCollections(onCollectionSync) {
         return __awaiter(this, void 0, void 0, function* () {
-            // const baseCollections = ["dashboard", "entity", "form", "report"];
-            // FormsSchema.forEach(schema => {
-            //   if (schema.entityName) {
-            //     if (collections.indexOf(schema.entityName) === -1) {
-            //       collections.push(schema.entityName);
-            //     }
-            //   }
-            // });
-            // ReportsSchema.forEach(schema => {
-            //   if (schema.entityName) {
-            //     if (collections.indexOf(schema.entityName) === -1) {
-            //       collections.push(schema.entityName);
-            //     }
-            //   }
-            // });
-            // for (const collection of baseCollections) {
-            //   await this.pullCollection(collection);
-            // }
             const entityCollections = (yield this.list("_entity"))
-                // .filter(p => p.offline)
+                .filter(p => p.offline)
                 .map(p => p.name);
             for (const collection of entityCollections) {
                 yield this.pullCollection(collection);
+                onCollectionSync(collection);
             }
         });
     }
-    // public async indexCollections() {
-    //   await promiseSerial(
-    //     SearchSchema.map(schema => {
-    //       return () =>
-    //         new Promise(async (resolve, reject) => {
-    //           const docIndex = new DocumentIndex({
-    //             filter: str => {
-    //               return str;
-    //             }
-    //           });
-    //           const docs = await this.list(schema.entityName, 0, 0, true);
-    //           schema.fields.forEach(field => {
-    //             docIndex.addField(field.name, field.opts);
-    //           });
-    //           docs.forEach(doc => {
-    //             docIndex.add(doc._id, doc);
-    //           });
-    //           this.collectionsTextIndexCache[schema.entityName] = docIndex;
-    //           resolve();
-    //         });
-    //     }),
-    //     { parallelize: 1 }
-    //   );
-    // }
-    // public async indexCommonEnglishWords() {
-    //   const words =
-    //     (await this.http
-    //       .get<string[]>("assets/data/common-words.json")
-    //       .toPromise()) || [];
-    //   const docIndex = new Index();
-    //   docIndex.addField("value");
-    //   words.forEach(w => {
-    //     docIndex.add(w, { value: w });
-    //   });
-    //   this.commonEnglishWordsIndexCache = docIndex;
-    // }
     sync() {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.pushCollections();
             yield this.pullCollections();
-            // await this.indexCollections();
-            //  await this.indexCommonEnglishWords();
         });
     }
 }
