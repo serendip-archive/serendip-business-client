@@ -59,6 +59,6 @@
     "gulp-typescript": "^5.0.0",
     "serendip-mongodb-provider": "^1.0.2",
     "typescript": "^3.3.3",
-    "ws": "^6.1.4"
+    "ws": "^7.4.5"
   }
 }
